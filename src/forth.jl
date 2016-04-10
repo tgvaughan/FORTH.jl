@@ -1,11 +1,16 @@
 module forth
 
-RS = Array{Int, 1}()
-DS = Array{Int, 1}()
+
+RS = Array{Int64, 1}(1024)
+RSP = 1
+
+PS = Array{Int64, 1}(1024)
+PSP = 1
 
 IP = 0
 W = 0
 X = 0
+
 jmp = nothing
 
 primitives = Array{Expr,1}()
@@ -38,10 +43,15 @@ EXIT = addPrim("exit", :(begin
     jmp = NEXT
 end))
 
+
+
+
 # VM loop
-#jmp = NEXT
-#while true
-#    eval(jmp)
-#end
+jmp = NEXT
+function runVM()
+    while true
+        eval(jmp)
+    end
+end
 
 end
