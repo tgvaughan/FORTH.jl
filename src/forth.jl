@@ -71,9 +71,8 @@ function defPrim(name::AbstractString, expr::Expr)
     return codeword
 end
 
-function defVar(name::AbstractString, var::Expr)
-    defPrim(name, Expr(:call, :pushPS, var))
-end
+defVar(name::AbstractString, var::Expr) = defPrim(name, Expr(:call, :pushPS, var))
+defConst(name::AbstractString, val::Int64) = defPrim(name, Expr(:call, :pushPS, :val))
 
 # Threading Primitives
 
@@ -100,19 +99,23 @@ end))
 
 DROP = defPrim("DROP", :(begin
     popPS()
+    jmp = NEXT
 end))
 
 SWAP = defPrim("SWAP", :(begin
     PS[PSP], PS[PSP-1] = PS[PSP-1], PS[PS]
+    jmp = NEXT
 end))
 
 DUP = defPrim("DUP", :(begin
     pushPS(PS[PSP])
+    jmp = NEXT
 end))
 
 LIT = defPrim("LIT", :(begin
     pushPS(memory[IP])
     IP += 1
+    jmp = NEXT
 end))
 
 # Memory primitives
@@ -121,23 +124,27 @@ STORE = defPrim("!", :(begin
     addr = popPS()
     dat = popPS()
     memory[addr] = dat
+    jmp = NEXT
 end))
 
 FETCH = defPrim("@", :(begin
     addr = popPS()
     pushPS(memory[addr])
+    jmp = NEXT
 end))
 
 ADDSTORE = defPrim("+!", :(begin
     addr = popPS()
     toAdd = popPS()
     memory[addr] += toAdd
+    jmp = NEXT
 end))
 
 SUBSTORE = defPrim("-!", :(begin
     addr = popPS()
     toSub = popPS()
     memory[addr] -= toSub
+    jmp = NEXT
 end))
 
 
@@ -146,12 +153,25 @@ end))
 defVar("STATE", :STATE)
 defVar("HERE", :HERE)
 defVar("LATEST", :LATEST)
-defVAR("PSP", :PSP)
 defVAR("BASE", :BASE)
 
 # Constants
 
+defConst("VERSION", 1)
+defConst("DOCOL", DOCOL)
 
+# Return Stack
+
+TOR = defPrim(">R", :(pushRS(popPS())))
+FROMR = defPrim("R>", :(pushPS(popRS())))
+RSPFETCH = defPrim("RSP@", :(pushPS(RSP)))
+RSPSTORE = defPrim("RSP!", :(RSP = popPS()))
+RDROP = defPrim("RDROP", :(popRS()))
+
+# Parameter Stack
+
+PSPFETCH = defPrim("PSP@", :(pushPS(PSP)))
+PSPSTORE = defPrim("PSP!", :(PSP = popPS()))
 
 # VM loop
 jmp = NEXT
