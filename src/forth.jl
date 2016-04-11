@@ -25,7 +25,7 @@ STATE = 0
 
 BASE = 10
 
-# Stack manipulation macros
+# Stack manipulation functions
 
 function pushRS(val::Int64)
     global RSP
@@ -51,7 +51,7 @@ function popPS()
     return val
 end
 
-# Primitive creation functions
+# Primitive creation and calling functions
 
 function defPrim(name::AbstractString, expr::Expr)
     global HERE, LATEST
@@ -79,6 +79,8 @@ defConst(name::AbstractString, val::Int64) = defPrim(name, quote
     pushPS($val)
     jmp = Next
 end)
+
+callPrim(addr::Int64) = eval(primitives[-addr])
 
 # Threading Primitives
 
@@ -207,14 +209,30 @@ end)
 # I/O
 
 KEY = defPrim("KEY", quote
+
     jmp = NEXT
 end)
 
-# VM loop
+EMIT = defPrim("EMIT", quote
+
+    jmp = NEXT
+end)
+
+WORD = defPrim("WORD", quote
+
+    jmp = NEXT
+end)
+
+NUMBER = defPrim("NUMBER", quote
+
+    jmp = NEXT
+end)
+
+#### VM loop ####
 jmp = NEXT
 function runVM()
     while true
-        eval(primitives[-jmp])
+        callPrim(jmp)
     end
 end
 
