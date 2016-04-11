@@ -65,87 +65,93 @@ function defPrim(name::AbstractString, expr::Expr)
 
     push!(primitives, expr)
     memory[HERE] = -length(primitives)
-    codeword = HERE
     HERE += 1
 
-    return codeword
+    return -length(primitives)
 end
 
-defVar(name::AbstractString, var::Expr) = defPrim(name, Expr(:call, :pushPS, var))
-defConst(name::AbstractString, val::Int64) = defPrim(name, Expr(:call, :pushPS, :val))
+defVar(name::AbstractString, var::Symbol) = defPrim(name, quote
+    pushPS($var)
+    jmp = NEXT
+end)
+
+defConst(name::AbstractString, val::Int64) = defPrim(name, quote
+    pushPS($val)
+    jmp = Next
+end)
 
 # Threading Primitives
 
-NEXT = defPrim("NEXT", :(begin
+NEXT = defPrim("NEXT", quote
     W = memory[IP]
     IP += 1
     X = memory[W]
     jmp = X
-end))
+end)
 
-DOCOL = defPrim("DOCOL", :(begin
+DOCOL = defPrim("DOCOL", quote
     pushRS(IP)
     IP = W + 1
     jmp = NEXT
-end))
+end)
 
-EXIT = defPrim("EXIT", :(begin
+EXIT = defPrim("EXIT", quote
     IP = popRS()
     jmp = NEXT
-end))
+end)
 
 
 # Basic forth primitives
 
-DROP = defPrim("DROP", :(begin
+DROP = defPrim("DROP", quote
     popPS()
     jmp = NEXT
-end))
+end)
 
-SWAP = defPrim("SWAP", :(begin
+SWAP = defPrim("SWAP", quote
     PS[PSP], PS[PSP-1] = PS[PSP-1], PS[PS]
     jmp = NEXT
-end))
+end)
 
-DUP = defPrim("DUP", :(begin
+DUP = defPrim("DUP", quote
     pushPS(PS[PSP])
     jmp = NEXT
-end))
+end)
 
-LIT = defPrim("LIT", :(begin
+LIT = defPrim("LIT", quote
     pushPS(memory[IP])
     IP += 1
     jmp = NEXT
-end))
+end)
 
 # Memory primitives
 
-STORE = defPrim("!", :(begin
+STORE = defPrim("!", quote
     addr = popPS()
     dat = popPS()
     memory[addr] = dat
     jmp = NEXT
-end))
+end)
 
-FETCH = defPrim("@", :(begin
+FETCH = defPrim("@", quote
     addr = popPS()
     pushPS(memory[addr])
     jmp = NEXT
-end))
+end)
 
-ADDSTORE = defPrim("+!", :(begin
+ADDSTORE = defPrim("+!", quote
     addr = popPS()
     toAdd = popPS()
     memory[addr] += toAdd
     jmp = NEXT
-end))
+end)
 
-SUBSTORE = defPrim("-!", :(begin
+SUBSTORE = defPrim("-!", quote
     addr = popPS()
     toSub = popPS()
     memory[addr] -= toSub
     jmp = NEXT
-end))
+end)
 
 
 # Built-in variables
@@ -162,22 +168,53 @@ defConst("DOCOL", DOCOL)
 
 # Return Stack
 
-TOR = defPrim(">R", :(pushRS(popPS())))
-FROMR = defPrim("R>", :(pushPS(popRS())))
-RSPFETCH = defPrim("RSP@", :(pushPS(RSP)))
-RSPSTORE = defPrim("RSP!", :(RSP = popPS()))
-RDROP = defPrim("RDROP", :(popRS()))
+TOR = defPrim(">R", quote
+    pushRS(popPS())
+    jmp = NEXT
+end)
+
+FROMR = defPrim("R>", quote
+    pushPS(popRS())
+end)
+
+RSPFETCH = defPrim("RSP@", quote
+    pushPS(RSP)
+    jmp = NEXT
+end)
+
+RSPSTORE = defPrim("RSP!", quote
+    RSP = popPS()
+    jmp = NEXT
+end)
+
+RDROP = defPrim("RDROP", quote
+    popRS()
+    jmp = NEXT
+end)
 
 # Parameter Stack
 
-PSPFETCH = defPrim("PSP@", :(pushPS(PSP)))
-PSPSTORE = defPrim("PSP!", :(PSP = popPS()))
+PSPFETCH = defPrim("PSP@", quote
+    pushPS(PSP)
+    jmp = NEXT
+end)
+
+PSPSTORE = defPrim("PSP!", quote
+    PSP = popPS()
+    jmp = NEXT
+end)
+
+# I/O
+
+KEY = defPrim("KEY", quote
+    jmp = NEXT
+end)
 
 # VM loop
 jmp = NEXT
 function runVM()
     while true
-        eval(primitives[-memory[jmp]])
+        eval(primitives[-jmp])
     end
 end
 
