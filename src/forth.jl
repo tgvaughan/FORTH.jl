@@ -14,16 +14,23 @@ jmp = 0
 
 primitives = Array{Expr,1}()
 memory = Array{Int64,1}(64*1024)
-LATEST = 0
-HERE = 1
+latest = 0
+here = 1
 
 # Intperpreter state
 
-STATE = 0
+state = 0
 
 # Current radix
 
-BASE = 10
+base = 10
+
+# Input buffer 
+
+tib_size = 4096
+tib = length(memory) - tib_size
+numtib = 0
+toin = 0
 
 # Stack manipulation functions
 
@@ -158,10 +165,10 @@ end)
 
 # Built-in variables
 
-defVar("STATE", :STATE)
-defVar("HERE", :HERE)
-defVar("LATEST", :LATEST)
-defVAR("BASE", :BASE)
+defVar("STATE", :state)
+defVar("HERE", :here)
+defVar("LATEST", :latest)
+defVar("BASE", :base)
 
 # Constants
 
@@ -208,7 +215,14 @@ end)
 
 # I/O
 
+defConst("TIB", tib)
+defVar("#TIB", :numtib)
+defVar(">IN", :toin)
+
 KEY = defPrim("KEY", quote
+    if toin >= numtib
+
+    end
 
     jmp = NEXT
 end)
