@@ -4,26 +4,24 @@ module forth
 size_memory = 640*1024
 
 # Buffer sizes
-size_RS = 1024  # Return stack size
-size_PS = 1024  # Parameter stack size
-size_TIB = 4096 # Terminal input buffer size
+size_SysVar = 16 #
+size_RS = 1024   # Return stack size
+size_PS = 1024   # Parameter stack size
+size_TIB = 4096  # Terminal input buffer size
 
 # VM registers
-RSP = 0 # Return stack pointer
-PSP =0  # Parameter/data stack pointer
-IP = 0  # Instruction pointer
-W = 0   # Working register
-X = 0   # Extra register
-
-RSP0 = 1
-PSP0 = RSP0 + size_RS
-here = PSP0 + size_PS + size_TIB  # location of bottom of dictionary
-latest = 0 # no previous definition
+type Reg
+    RSP::Int64  # Return stack pointer
+    PSP::Int64  # Parameter/data stack pointer
+    IP::Int64   # Instruction pointer
+    W::Int64    # Working register
+    X::Int64    # Extra register
+end
 
 # The following array constitutes the memory of the VM. It has the following geography:
 #
 # memory = +-----------------------+
-#          | System Variables      |
+#          | Built-in Variables    |
 #          +-----------------------+
 #          | Return Stack          |
 #          +-----------------------+
@@ -35,7 +33,7 @@ latest = 0 # no previous definition
 #          +-----------------------+
 #
 # Note that all words (user-defined, primitive, variables, etc) are included in
-# the dictionary.
+# the dictionary. Additionally, all 
 #
 # Simple linear addressing is used with one exception: references to primitive code
 # blocks, which are represented as anonymous functions, appear the negative index
@@ -44,31 +42,40 @@ latest = 0 # no previous definition
 memory = Array{Int64,1}(size_memory)
 primitives = Array{Function,1}()
 
+# Built-in variables
+
+nextVarAddr = 1
+RSP0 = nextVarAddr; nextVarAddr += 1
+PSP0 = nextVarAddr; nextVarAddr += 1
+HERE = nextVarAddr; nextVarAddr += 1
+LATEST = nextVarAddr; nextVarAddr += 1
+
+memory[RSP0] = size_BIVar               # bottom of RS
+memory[PSP0] = memory[RSP0] + size_RS   # bottom of PS
+TIB = memory[PSP0] + size_PS            # address of terminal input buffer
+memory[HERE] = TIB + size_TIB           # location of bottom of dictionary
+memory[LATEST] = 0                      # no previous definition
 
 
 # Stack manipulation functions
 
-function pushRS(val::Int64)
-    global RSP
-    memory[RSP+=1] = val
+function pushRS(reg::Reg, val::Int64)
+    memory[reg.RSP+=1] = val
 end
 
-function popRS()
-    global RSP
-    val = memory[RSP]
-    RSP -= 1
+function popRS(reg::Reg)
+    val = memory[reg.RSP]
+    reg.RSP -= 1
     return val
 end
 
-function pushPS(val::Int64)
-    global PSP
-    memory[PSP += 1] = val
+function pushPS(reg::Reg, val::Int64)
+    memory[reg.PSP += 1] = val
 end
 
-function popPS()
-    global PSP
-    val = PS[PSP]
-    PSP -= 1
+function popPS(reg::Reg)
+    val = memory[reg.PSP]
+    reg.PSP -= 1
     return val
 end
 
@@ -91,7 +98,7 @@ function defPrim(name::AbstractString, f::Function)
     return -length(primitives)
 end
 
-callPrim(addr::Int64) = primitives[-addr]()
+callPrim(reg::Reg, addr::Int64) = primitives[-addr](reg)
 
 function defSysVar(name::AbstractString, varAddr::Int64)
     global latest, here
@@ -103,8 +110,8 @@ function defSysVar(name::AbstractString, varAddr::Int64)
     memory[here] = length(name); here += 1
     memory[here:(here+length(name)-1)] = [Int(c) for c in name]; here += length(name)
 
-    push!(primitives, eval(:(() -> begin
-        pushPS($(varAddr))
+    push!(primitives, eval(:((reg::Reg) -> begin
+        pushPS(reg, $(varAddr))
         return NEXT
     end)))
     memory[here] = -length(primitives)
@@ -113,77 +120,77 @@ function defSysVar(name::AbstractString, varAddr::Int64)
     return varAddr
 end
 
-function defConst(name
+defConst(name::AbstractString, val::Int64) = defSysVar(name, val)
 
 # Threading Primitives
 
-NEXT = defPrim("NEXT", () -> begin
-    W = memory[IP]
-    IP += 1
-    X = memory[W]
+NEXT = defPrim("NEXT", (reg) -> begin
+    reg.W = memory[reg.IP]
+    reg.IP += 1
+    X = memory[reg.W]
     return X
 end)
 
-DOCOL = defPrim("DOCOL", () -> begin
-    pushRS(IP)
-    IP = W + 1
+DOCOL = defPrim("DOCOL", (reg) -> begin
+    pushRS(reg, reg.IP)
+    reg.IP = reg.W + 1
     return NEXT
 end)
 
-EXIT = defPrim("EXIT", () -> begin
-    IP = popRS()
+EXIT = defPrim("EXIT", (reg) -> begin
+    reg.IP = popRS(reg)
     return NEXT
 end)
 
 
 # Basic forth primitives
 
-DROP = defPrim("DROP", () -> begin
-    popPS()
+DROP = defPrim("DROP", (reg) -> begin
+    popPS(reg)
     return NEXT
 end)
 
-SWAP = defPrim("SWAP", () -> begin
-    PS[PSP], PS[PSP-1] = PS[PSP-1], PS[PS]
+SWAP = defPrim("SWAP", (reg) -> begin
+    memory[reg.PSP], memory[reg.PSP-1] = memory[reg.PSP-1], memory[reg.PSP]
     return NEXT
 end)
 
-DUP = defPrim("DUP", () -> begin
-    pushPS(PS[PSP])
+DUP = defPrim("DUP", (reg) -> begin
+    pushPS(reg, memory[reg.PSP])
     return NEXT
 end)
 
-LIT = defPrim("LIT", () -> begin
-    pushPS(memory[IP])
-    IP += 1
+LIT = defPrim("LIT", (reg) -> begin
+    pushPS(reg, memory[reg.IP])
+    reg.IP += 1
     return NEXT
 end)
 
 # Memory primitives
 
-STORE = defPrim("!", quote
-    addr = popPS()
-    dat = popPS()
+STORE = defPrim("!", (reg) -> begin
+    addr = popPS(reg)
+    dat = popPS(reg)
     memory[addr] = dat
     return NEXT
 end)
 
-FETCH = defPrim("@", quote
-    addr = popPS()
-    pushPS(memory[addr])
+FETCH = defPrim("@", (reg) -> begin
+    addr = popPS(reg)
+    pushPS(reg, memory[addr])
     return NEXT
 end)
 
-ADDSTORE = defPrim("+!", quote
-    addr = popPS()
-    toAdd = popPS()
+ADDSTORE = defPrim("+!", (reg) -> begin
+    addr = popPS(reg)
+    toAdd = popPS(reg)
     memory[addr] += toAdd
     return NEXT
 end)
 
-SUBSTORE = defPrim("-!", quote
-    addr = popPS()
-    toSub = popPS()
+SUBSTORE = defPrim("-!", (reg) -> begin
+    addr = popPS(reg)
+    toSub = popPS(reg)
     memory[addr] -= toSub
     return NEXT
 end)
@@ -199,40 +206,40 @@ defConst("DOCOL", DOCOL)
 
 # Return Stack
 
-TOR = defPrim(">R", () -> begin
-    pushRS(popPS())
+TOR = defPrim(">R", (reg) -> begin
+    pushRS(reg, popPS(reg))
     return NEXT
 end)
 
-FROMR = defPrim("R>", () -> begin
-    pushPS(popRS())
+FROMR = defPrim("R>", (reg) -> begin
+    pushPS(reg, popRS(reg))
     return NEXT
 end)
 
-RSPFETCH = defPrim("RSP@", () -> begin
-    pushPS(RSP)
+RSPFETCH = defPrim("RSP@", (reg) -> begin
+    pushPS(reg, RSP)
     return NEXT
 end)
 
-RSPSTORE = defPrim("RSP!", () -> begin
-    RSP = popPS()
+RSPSTORE = defPrim("RSP!", (reg) -> begin
+    RSP = popPS(reg)
     return NEXT
 end)
 
-RDROP = defPrim("RDROP", () -> begin
-    popRS()
+RDROP = defPrim("RDROP", (reg) -> begin
+    popRS(reg)
     return NEXT
 end)
 
 # Parameter Stack
 
-PSPFETCH = defPrim("PSP@", () -> begin
-    pushPS(PSP)
+PSPFETCH = defPrim("PSP@", (reg) -> begin
+    pushPS(reg, PSP)
     return NEXT
 end)
 
-PSPSTORE = defPrim("PSP!", () -> begin
-    PSP = popPS()
+PSPSTORE = defPrim("PSP!", (reg) -> begin
+    PSP = popPS(reg)
     return NEXT
 end)
 
@@ -242,7 +249,7 @@ defConst("TIB", tib)
 defVar("#TIB", :numtib)
 defVar(">IN", :toin)
 
-KEY = defPrim("KEY", () -> begin
+KEY = defPrim("KEY", (reg) -> begin
     if toin >= numtib
 
     end
@@ -250,25 +257,25 @@ KEY = defPrim("KEY", () -> begin
     return NEXT
 end)
 
-EMIT = defPrim("EMIT", () -> begin
+EMIT = defPrim("EMIT", (reg) -> begin
 
     return NEXT
 end)
 
-WORD = defPrim("WORD", () -> begin
+WORD = defPrim("WORD", (reg) -> begin
 
     return NEXT
 end)
 
-NUMBER = defPrim("NUMBER", () -> begin
+NUMBER = defPrim("NUMBER", (reg) -> begin
 
     return NEXT
 end)
 
 #### VM loop ####
-function runVM()
+function runVM(reg::Reg)
     jmp = NEXT
-    while (jmp = callPrim(jmp)) != 0 end
+    while (jmp = callPrim(reg, jmp)) != 0 end
 end
 
 end
