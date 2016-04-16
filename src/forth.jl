@@ -23,6 +23,8 @@ latest = 0 # no previous definition
 # The following array constitutes the memory of the VM. It has the following geography:
 #
 # memory = +-----------------------+
+#          | System Variables      |
+#          +-----------------------+
 #          | Return Stack          |
 #          +-----------------------+
 #          | Parameter Stack       |
@@ -41,6 +43,7 @@ latest = 0 # no previous definition
 
 memory = Array{Int64,1}(size_memory)
 primitives = Array{Function,1}()
+
 
 
 # Stack manipulation functions
@@ -90,7 +93,7 @@ end
 
 callPrim(addr::Int64) = primitives[-addr]()
 
-function defVar(name::AbstractString, val::Int64)
+function defSysVar(name::AbstractString, varAddr::Int64)
     global latest, here
 
     memory[here] = latest
@@ -100,13 +103,17 @@ function defVar(name::AbstractString, val::Int64)
     memory[here] = length(name); here += 1
     memory[here:(here+length(name)-1)] = [Int(c) for c in name]; here += length(name)
 
-    push!(primitives, () -> begin
+    push!(primitives, eval(:(() -> begin
+        pushPS($(varAddr))
+        return NEXT
+    end)))
+    memory[here] = -length(primitives)
+    here += 1
 
-    end)
-
-    pushPS($var)
-    jmp = NEXT
+    return varAddr
 end
+
+function defConst(name
 
 # Threading Primitives
 
@@ -184,10 +191,6 @@ end)
 
 # Built-in variables
 
-defVar("STATE", :state)
-defVar("HERE", :here)
-defVar("LATEST", :latest)
-defVar("BASE", :base)
 
 # Constants
 
