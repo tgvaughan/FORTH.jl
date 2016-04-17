@@ -1,10 +1,10 @@
 module forth
 
-# VM memory size
-size_memory = 640*1024
+# VM mem size
+size_mem = 640*1024
 
 # Buffer sizes
-size_SysVar = 16 #
+size_BIVar = 16 #
 size_RS = 1024   # Return stack size
 size_PS = 1024   # Parameter stack size
 size_TIB = 4096  # Terminal input buffer size
@@ -20,7 +20,7 @@ end
 
 # The following array constitutes the memory of the VM. It has the following geography:
 #
-# memory = +-----------------------+
+# mem = +-----------------------+
 #          | Built-in Variables    |
 #          +-----------------------+
 #          | Return Stack          |
@@ -33,13 +33,13 @@ end
 #          +-----------------------+
 #
 # Note that all words (user-defined, primitive, variables, etc) are included in
-# the dictionary. Additionally, all 
+# the dictionary.
 #
 # Simple linear addressing is used with one exception: references to primitive code
 # blocks, which are represented as anonymous functions, appear the negative index
 # into the primitives array which contains only these functions.
 
-memory = Array{Int64,1}(size_memory)
+mem = Array{Int64,1}(size_mem)
 primitives = Array{Function,1}()
 
 # Built-in variables
@@ -47,87 +47,92 @@ primitives = Array{Function,1}()
 nextVarAddr = 1
 RSP0 = nextVarAddr; nextVarAddr += 1
 PSP0 = nextVarAddr; nextVarAddr += 1
+TIB = nextVarAddr; nextVarAddr += 1
 HERE = nextVarAddr; nextVarAddr += 1
 LATEST = nextVarAddr; nextVarAddr += 1
 
-memory[RSP0] = size_BIVar               # bottom of RS
-memory[PSP0] = memory[RSP0] + size_RS   # bottom of PS
-TIB = memory[PSP0] + size_PS            # address of terminal input buffer
-memory[HERE] = TIB + size_TIB           # location of bottom of dictionary
-memory[LATEST] = 0                      # no previous definition
-
+mem[RSP0] = size_BIVar               # bottom of RS
+mem[PSP0] = mem[RSP0] + size_RS      # bottom of PS
+mem[TIB] = mem[PSP0] + size_PS            # address of terminal input buffer
+mem[HERE] = mem[TIB] + size_TIB           # location of bottom of dictionary
+mem[LATEST] = 0                      # no previous definition
 
 # Stack manipulation functions
 
 function pushRS(reg::Reg, val::Int64)
-    memory[reg.RSP+=1] = val
+    mem[reg.RSP+=1] = val
 end
 
 function popRS(reg::Reg)
-    val = memory[reg.RSP]
+    val = mem[reg.RSP]
     reg.RSP -= 1
     return val
 end
 
 function pushPS(reg::Reg, val::Int64)
-    memory[reg.PSP += 1] = val
+    mem[reg.PSP += 1] = val
 end
 
 function popPS(reg::Reg)
-    val = memory[reg.PSP]
+    val = mem[reg.PSP]
     reg.PSP -= 1
     return val
 end
 
 # Primitive creation and calling functions
 
+function createHeader(name::AbstractString)
+    mem[mem[HERE]] = mem[LATEST]
+    mem[LATEST] = mem[HERE]
+    mem[HERE] += 1
+
+    mem[mem[HERE]] = length(name); mem[HERE] += 1
+    mem[mem[HERE]:(mem[HERE]+length(name)-1)] = [Int(c) for c in name]; mem[HERE] += length(name)
+end
+
 function defPrim(name::AbstractString, f::Function)
-    global latest, here
-
-    memory[here] = latest
-    latest = here
-    here += 1
-
-    memory[here] = length(name); here += 1
-    memory[here:(here+length(name)-1)] = [Int(c) for c in name]; here += length(name)
+    createHeader(name)
 
     push!(primitives, f)
-    memory[here] = -length(primitives)
-    here += 1
+    mem[mem[HERE]] = -length(primitives)
+    mem[HERE] += 1
 
     return -length(primitives)
 end
 
 callPrim(reg::Reg, addr::Int64) = primitives[-addr](reg)
 
-function defSysVar(name::AbstractString, varAddr::Int64)
-    global latest, here
+defExistingVar(name::AbstractString, varAddr::Int64) = defPrim(name, eval(:((reg) -> begin
+    pushPS(reg, $(varAddr))
+    return NEXT
+end)))
 
-    memory[here] = latest
-    latest = here
-    here += 1
+defConst(name::AbstractString, val::Int64) = defPrim(name, eval(:((reg) -> begin
+    pushPS(reg, $(val))
+    return NEXT
+end)))
 
-    memory[here] = length(name); here += 1
-    memory[here:(here+length(name)-1)] = [Int(c) for c in name]; here += length(name)
-
-    push!(primitives, eval(:((reg::Reg) -> begin
+function defNewVar(name::AbstractString, initial::Int64)
+    createHeader(name)
+    
+    varAddr = mem[HERE] + 1
+    push!(primitives, eval(:((reg) -> begin
         pushPS(reg, $(varAddr))
         return NEXT
     end)))
-    memory[here] = -length(primitives)
-    here += 1
+    mem[mem[HERE]] = -length(primitives); mem[HERE] += 1
+
+    mem[mem[HERE]] = inital; mem[HERE] += 1
 
     return varAddr
 end
 
-defConst(name::AbstractString, val::Int64) = defSysVar(name, val)
-
 # Threading Primitives
 
 NEXT = defPrim("NEXT", (reg) -> begin
-    reg.W = memory[reg.IP]
+    reg.W = mem[reg.IP]
     reg.IP += 1
-    X = memory[reg.W]
+    X = mem[reg.W]
     return X
 end)
 
@@ -151,17 +156,17 @@ DROP = defPrim("DROP", (reg) -> begin
 end)
 
 SWAP = defPrim("SWAP", (reg) -> begin
-    memory[reg.PSP], memory[reg.PSP-1] = memory[reg.PSP-1], memory[reg.PSP]
+    mem[reg.PSP], mem[reg.PSP-1] = mem[reg.PSP-1], mem[reg.PSP]
     return NEXT
 end)
 
 DUP = defPrim("DUP", (reg) -> begin
-    pushPS(reg, memory[reg.PSP])
+    pushPS(reg, mem[reg.PSP])
     return NEXT
 end)
 
 LIT = defPrim("LIT", (reg) -> begin
-    pushPS(reg, memory[reg.IP])
+    pushPS(reg, mem[reg.IP])
     reg.IP += 1
     return NEXT
 end)
@@ -171,33 +176,39 @@ end)
 STORE = defPrim("!", (reg) -> begin
     addr = popPS(reg)
     dat = popPS(reg)
-    memory[addr] = dat
+    mem[addr] = dat
     return NEXT
 end)
 
 FETCH = defPrim("@", (reg) -> begin
     addr = popPS(reg)
-    pushPS(reg, memory[addr])
+    pushPS(reg, mem[addr])
     return NEXT
 end)
 
 ADDSTORE = defPrim("+!", (reg) -> begin
     addr = popPS(reg)
     toAdd = popPS(reg)
-    memory[addr] += toAdd
+    mem[addr] += toAdd
     return NEXT
 end)
 
 SUBSTORE = defPrim("-!", (reg) -> begin
     addr = popPS(reg)
     toSub = popPS(reg)
-    memory[addr] -= toSub
+    mem[addr] -= toSub
     return NEXT
 end)
 
 
 # Built-in variables
 
+defExistingVar("HERE", HERE)
+defExistingVar("LATEST", LATEST)
+defExistingVar("PSP0", PSP0)
+defExistingVar("RSP0", RSP0)
+defNewVar("STATE", 0)
+defNewVar("BASE", 10)
 
 # Constants
 
@@ -245,37 +256,62 @@ end)
 
 # I/O
 
-defConst("TIB", tib)
-defVar("#TIB", :numtib)
-defVar(">IN", :toin)
-
-KEY = defPrim("KEY", (reg) -> begin
-    if toin >= numtib
-
-    end
-
-    return NEXT
-end)
-
-EMIT = defPrim("EMIT", (reg) -> begin
-
-    return NEXT
-end)
-
-WORD = defPrim("WORD", (reg) -> begin
-
-    return NEXT
-end)
-
-NUMBER = defPrim("NUMBER", (reg) -> begin
-
-    return NEXT
-end)
-
+#defConst("TIB", tib)
+#defVar("#TIB", :numtib)
+#defVar(">IN", :toin)
+#
+#KEY = defPrim("KEY", (reg) -> begin
+#    if toin >= numtib
+#
+#    end
+#
+#    return NEXT
+#end)
+#
+#EMIT = defPrim("EMIT", (reg) -> begin
+#
+#    return NEXT
+#end)
+#
+#WORD = defPrim("WORD", (reg) -> begin
+#
+#    return NEXT
+#end)
+#
+#NUMBER = defPrim("NUMBER", (reg) -> begin
+#
+#    return NEXT
+#end)
+#
 #### VM loop ####
-function runVM(reg::Reg)
-    jmp = NEXT
-    while (jmp = callPrim(reg, jmp)) != 0 end
+#function runVM(reg::Reg)
+#    jmp = NEXT
+#    while (jmp = callPrim(reg, jmp)) != 0 end
+#end
+
+# Debugging tools
+
+function coredump(startAddr::Int64; count::Int64 = 16, cellsPerLine::Int64 = 8)
+    chars = Array{Char,1}(cellsPerLine)
+
+    for i in 0:(count-1)
+        addr = startAddr + i
+        if i%cellsPerLine == 0
+            print("$addr:")
+        end
+
+        print("\t$(mem[addr]) ")
+
+        if (mem[addr]>=32 && mem[addr]<176)
+            chars[i%cellsPerLine + 1] = Char(mem[addr])
+        else
+            chars[i%cellsPerLine + 1] = '.'
+        end
+
+        if i%cellsPerLine == cellsPerLine-1
+            println(string("\t", ASCIIString(chars)))
+        end
+    end
 end
 
 end
