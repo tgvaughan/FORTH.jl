@@ -4,10 +4,9 @@ module forth
 size_mem = 640*1024
 
 # Buffer sizes
-size_BIVar = 16 #
 size_RS = 1024   # Return stack size
 size_PS = 1024   # Parameter stack size
-size_TIB = 4096  # Terminal input buffer size
+size_TIB = 1096  # Terminal input buffer size
 
 # The mem array constitutes the memory of the VM. It has the following geography:
 #
@@ -41,11 +40,13 @@ PSP0 = nextVarAddr; nextVarAddr += 1
 HERE = nextVarAddr; nextVarAddr += 1
 LATEST = nextVarAddr; nextVarAddr += 1
 
-mem[RSP0] = size_BIVar               # bottom of RS
+mem[RSP0] = nextVarAddr              # bottom of RS
 mem[PSP0] = mem[RSP0] + size_RS      # bottom of PS
 TIB = mem[PSP0] + size_PS            # address of terminal input buffer
 mem[HERE] = TIB + size_TIB           # location of bottom of dictionary
 mem[LATEST] = 0                      # no previous definition
+
+DICT = mem[HERE] # Save bottom of dictionary as constant
 
 # VM registers
 type Reg
@@ -57,13 +58,32 @@ type Reg
 end
 reg = Reg(mem[RSP0], mem[PSP0], 0, 0, 0)
 
-# Stack manipulation functions
+# Stack manipulation
+
+type StackUnderflow <: Exception end
+
+getRSDepth() = reg.RSP - mem[RSP0]
+getPSDepth() = reg.PSP - mem[PSP0]
+
+function ensurePSDepth(depth::Int64)
+    if getPSDepth()<depth
+        throw(StackUnderflow())
+    end
+end
+
+function ensureRSDepth(depth::Int64)
+    if getRSDepth()<depth
+        throw(StackUnderflow())
+    end
+end
 
 function pushRS(val::Int64)
     mem[reg.RSP+=1] = val
 end
 
 function popRS()
+    ensureRSDepth(1)
+
     val = mem[reg.RSP]
     reg.RSP -= 1
     return val
@@ -74,6 +94,8 @@ function pushPS(val::Int64)
 end
 
 function popPS()
+    ensurePSDepth(1)
+
     val = mem[reg.PSP]
     reg.PSP -= 1
     return val
@@ -109,13 +131,6 @@ function defExistingVar(name::AbstractString, varAddr::Int64; flags::Int64=0)
     end)))
 end
 
-function defConst(name::AbstractString, val::Int64; flags::Int64=0)
-    defPrim(name, eval(:(() -> begin
-        pushPS($(val))
-        return NEXT
-    end)))
-end
-
 function defNewVar(name::AbstractString, initial::Int64; flags::Int64=0)
     createHeader(name, flags)
     
@@ -129,6 +144,15 @@ function defNewVar(name::AbstractString, initial::Int64; flags::Int64=0)
     mem[mem[HERE]] = initial; mem[HERE] += 1
 
     return varAddr
+end
+
+function defConst(name::AbstractString, val::Int64; flags::Int64=0)
+    defPrim(name, eval(:(() -> begin
+        pushPS($(val))
+        return NEXT
+    end)))
+
+    return val
 end
 
 # Threading Primitives
@@ -160,12 +184,77 @@ DROP = defPrim("DROP", () -> begin
 end)
 
 SWAP = defPrim("SWAP", () -> begin
-    mem[reg.PSP], mem[reg.PSP-1] = mem[reg.PSP-1], mem[reg.PSP]
+    a = popPS()
+    b = popPS()
+    pushPS(a)
+    pushPS(b)
     return NEXT
 end)
 
 DUP = defPrim("DUP", () -> begin
     pushPS(mem[reg.PSP])
+    return NEXT
+end)
+
+OVER = defPrim("OVER", () -> begin
+    ensurePSDepth(2)
+    pushPS(mem[reg.PSP-1])
+    return NEXT
+end)
+
+ROT = defPrim("ROT", () -> begin
+    a = popPS()
+    b = popPS()
+    c = popPS()
+    pushPS(a)
+    pushPS(c)
+    pushPS(b)
+    return NEXT
+end)
+
+NROT = defPrim("-ROT", () -> begin
+    a = popPS()
+    b = popPS()
+    c = popPS()
+    pushPS(b)
+    pushPS(a)
+    pushPS(c)
+    return NEXT
+end)
+
+TWODROP = defPrim("2DROP", () -> begin
+    popPS()
+    popPS()
+    return NEXT
+end)
+
+TWODUP = defPrim("2DUP", () -> begin
+    ensurePSDepth(2)
+    a = mem[reg.PSP-1]
+    b = mem[reg.PSP]
+    pushPS(a)
+    pushPS(b)
+    return NEXT
+end)
+
+TWOSWAP = defPrim("2SWAP", () -> begin
+    a = popPS()
+    b = popPS()
+    c = popPS()
+    d = popPS()
+    pushPS(b)
+    pushPS(a)
+    pushPS(c)
+    pushPS(d)
+    return NEXT
+end)
+
+QDUP = defPrim("?DUP", () -> begin
+    ensurePSDepth(1)
+    val = mem[reg.PSP]
+    if val != 0
+        pushPS(val)
+    end
     return NEXT
 end)
 
@@ -211,13 +300,16 @@ defExistingVar("HERE", HERE)
 defExistingVar("LATEST", LATEST)
 defExistingVar("PSP0", PSP0)
 defExistingVar("RSP0", RSP0)
-defNewVar("STATE", 0)
-defNewVar("BASE", 10)
+STATE = defNewVar("STATE", 0)
+BASE = defNewVar("BASE", 10)
 
 # Constants
 
 defConst("VERSION", 1)
 defConst("DOCOL", DOCOL)
+defConst("DICT", DICT)
+F_IMMED = defConst("F_IMMED", 100)
+F_HIDEN = defConst("F_HIDDEN", 1000)
 
 # Return Stack
 
@@ -232,7 +324,7 @@ FROMR = defPrim("R>", () -> begin
 end)
 
 RSPFETCH = defPrim("RSP@", () -> begin
-    pushPS(RSP)
+    pushPS(reg.RSP)
     return NEXT
 end)
 
@@ -249,7 +341,7 @@ end)
 # Parameter Stack
 
 PSPFETCH = defPrim("PSP@", () -> begin
-    pushPS(PSP)
+    pushPS(reg.PSP)
     return NEXT
 end)
 
@@ -262,25 +354,78 @@ end)
 
 defConst("TIB", TIB)
 NUMTIB = defNewVar("#TIB", 0)
-TOIN = defNewVar(">IN", TIB)
+TOIN = defNewVar(">IN", 0)
 
-#KEY = defPrim("KEY", (reg) -> begin
-#    if toin >= numtib
-#
-#    end
-#
-#    return NEXT
-#end)
-#
-#EMIT = defPrim("EMIT", (reg) -> begin
-#
-#    return NEXT
-#end)
-#
-#WORD = defPrim("WORD", (reg) -> begin
-#
-#    return NEXT
-#end)
+KEY = defPrim("KEY", () -> begin
+    if mem[TOIN] >= mem[NUMTIB]
+        mem[TOIN] = 0
+        line = readline()
+        mem[NUMTIB] = length(line)
+        mem[TIB:(TIB+mem[NUMTIB]-1)] = [Int64(c) for c in collect(line)]
+    end
+
+    pushPS(mem[TIB + mem[TOIN]])
+    mem[TOIN] += 1
+
+    return NEXT
+end)
+
+EMIT = defPrim("EMIT", () -> begin
+    print(Char(popPS()))
+    return NEXT
+end)
+
+WORD = defPrim("WORD", () -> begin
+    
+    c = -1
+
+    skip_to_end = false
+    while true
+
+        callPrim(KEY)
+        c = Char(popPS())
+
+        if c == '\\'
+            skip_to_end = true
+            continue
+        end
+
+        if skip_to_end
+            if c == '\n'
+                skip_to_end = false
+            end
+            continue
+        end
+
+        if c == ' ' || c == '\t'
+            continue
+        end
+
+        break
+    end
+
+    wordAddr = mem[HERE]
+    offset = 0
+
+    while true
+        mem[wordAddr + offset] = Int64(c)
+        offset += 1
+
+        callPrim(KEY)
+        c = Char(popPS())
+
+        if c == ' ' || c == '\t'
+            break
+        end
+    end
+
+    wordLen = offset
+
+    pushPS(wordAddr)
+    pushPS(wordLen)
+
+    return NEXT
+end)
 #
 #NUMBER = defPrim("NUMBER", (reg) -> begin
 #
@@ -318,7 +463,7 @@ function coredump(startAddr::Int64; count::Int64 = 16, cellsPerLine::Int64 = 8)
     end
 end
 
-function dumpPS()
+function printPS()
     count = reg.PSP - mem[PSP0]
 
     if count > 0
