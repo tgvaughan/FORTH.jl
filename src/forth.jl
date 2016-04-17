@@ -158,6 +158,7 @@ end
 function defWord(name::AbstractString, wordAddrs::Array{Int64,1}; flags::Int64=0)
     createHeader(name, flags)
 
+    addr = mem[HERE]
     mem[mem[HERE]] = DOCOL
     mem[HERE] += 1
 
@@ -165,6 +166,8 @@ function defWord(name::AbstractString, wordAddrs::Array{Int64,1}; flags::Int64=0
         mem[mem[HERE]] = wordAddr
         mem[HERE] += 1
     end
+
+    return addr
 end
 
 # Threading Primitives
@@ -543,13 +546,13 @@ TOCFA = defPrim(">CFA", () -> begin
     return NEXT
 end)
 
-TODFA = defWord(">DFA", [TOCFA, INCR1, EXIT])
+TODFA = defWord(">DFA", [TOCFA, INCR, EXIT])
 
 #### VM loop ####
-#function runVM(reg::Reg)
-#    jmp = NEXT
-#    while (jmp = callPrim(reg, jmp)) != 0 end
-#end
+function runVM()
+    jmp = NEXT
+    while (jmp = callPrim(jmp)) != 0 end
+end
 
 # Debugging tools
 
