@@ -155,6 +155,18 @@ function defConst(name::AbstractString, val::Int64; flags::Int64=0)
     return val
 end
 
+function defWord(name::AbstractString, wordAddrs::Array{Int64,1}; flags::Int64=0)
+    createHeader(name, flags)
+
+    mem[mem[HERE]] = DOCOL
+    mem[HERE] += 1
+
+    for wordAddr in wordAddrs
+        mem[mem[HERE]] = wordAddr
+        mem[HERE] += 1
+    end
+end
+
 # Threading Primitives
 
 NEXT = defPrim("NEXT", () -> begin
@@ -255,6 +267,48 @@ QDUP = defPrim("?DUP", () -> begin
     if val != 0
         pushPS(val)
     end
+    return NEXT
+end)
+
+INCR = defPrim("1+", () -> begin
+    ensurePSDepth(1)
+    mem[reg.PSP] += 1
+    return NEXT
+end)
+
+DECR = defPrim("1-", () -> begin
+    ensurePSDepth(1)
+    mem[reg.PSP] -= 1
+    return NEXT
+end)
+
+ADD = defPrim("+", () -> begin
+    a = popPS()
+    b = popPS()
+    pushPS(a+b)
+    return NEXT
+end)
+
+SUB = defPrim("-", () -> begin
+    a = popPS()
+    b = popPS()
+    pushPS(b-a)
+    return NEXT
+end)
+
+MUL = defPrim("*", () -> begin
+    a = popPS()
+    b = popPS()
+    pushPS(a*b)
+    return NEXT
+end)
+
+DIVMOD = defPrim("/MOD", () -> begin
+    a = popPS()
+    b = popPS()
+    q,r = divrem(b,a)
+    pushPS(r)
+    pushPS(q)
     return NEXT
 end)
 
@@ -484,10 +538,12 @@ TOCFA = defPrim(">CFA", () -> begin
     lenAndFlags = mem[addr+1]
     len = lenAndFlags & F_LENMASK
 
-    pushPS(addr + 1 + len)
+    pushPS(addr + 2 + len)
 
     return NEXT
 end)
+
+TODFA = defWord(">DFA", [TOCFA, INCR1, EXIT])
 
 #### VM loop ####
 #function runVM(reg::Reg)
