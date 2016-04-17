@@ -9,28 +9,19 @@ size_RS = 1024   # Return stack size
 size_PS = 1024   # Parameter stack size
 size_TIB = 4096  # Terminal input buffer size
 
-# VM registers
-type Reg
-    RSP::Int64  # Return stack pointer
-    PSP::Int64  # Parameter/data stack pointer
-    IP::Int64   # Instruction pointer
-    W::Int64    # Working register
-    X::Int64    # Extra register
-end
-
-# The following array constitutes the memory of the VM. It has the following geography:
+# The mem array constitutes the memory of the VM. It has the following geography:
 #
 # mem = +-----------------------+
-#          | Built-in Variables    |
-#          +-----------------------+
-#          | Return Stack          |
-#          +-----------------------+
-#          | Parameter Stack       |
-#          +-----------------------+
-#          | Terminal Input Buffer |
-#          +-----------------------+
-#          | Dictionary            |
-#          +-----------------------+
+#       | Built-in Variables    |
+#       +-----------------------+
+#       | Return Stack          |
+#       +-----------------------+
+#       | Parameter Stack       |
+#       +-----------------------+
+#       | Terminal Input Buffer |
+#       +-----------------------+
+#       | Dictionary            |
+#       +-----------------------+
 #
 # Note that all words (user-defined, primitive, variables, etc) are included in
 # the dictionary.
@@ -47,33 +38,42 @@ primitives = Array{Function,1}()
 nextVarAddr = 1
 RSP0 = nextVarAddr; nextVarAddr += 1
 PSP0 = nextVarAddr; nextVarAddr += 1
-TIB = nextVarAddr; nextVarAddr += 1
 HERE = nextVarAddr; nextVarAddr += 1
 LATEST = nextVarAddr; nextVarAddr += 1
 
 mem[RSP0] = size_BIVar               # bottom of RS
 mem[PSP0] = mem[RSP0] + size_RS      # bottom of PS
-mem[TIB] = mem[PSP0] + size_PS            # address of terminal input buffer
-mem[HERE] = mem[TIB] + size_TIB           # location of bottom of dictionary
+TIB = mem[PSP0] + size_PS            # address of terminal input buffer
+mem[HERE] = TIB + size_TIB           # location of bottom of dictionary
 mem[LATEST] = 0                      # no previous definition
+
+# VM registers
+type Reg
+    RSP::Int64  # Return stack pointer
+    PSP::Int64  # Parameter/data stack pointer
+    IP::Int64   # Instruction pointer
+    W::Int64    # Working register
+    X::Int64    # Extra register
+end
+reg = Reg(mem[RSP0], mem[PSP0], 0, 0, 0)
 
 # Stack manipulation functions
 
-function pushRS(reg::Reg, val::Int64)
+function pushRS(val::Int64)
     mem[reg.RSP+=1] = val
 end
 
-function popRS(reg::Reg)
+function popRS()
     val = mem[reg.RSP]
     reg.RSP -= 1
     return val
 end
 
-function pushPS(reg::Reg, val::Int64)
+function pushPS(val::Int64)
     mem[reg.PSP += 1] = val
 end
 
-function popPS(reg::Reg)
+function popPS()
     val = mem[reg.PSP]
     reg.PSP -= 1
     return val
@@ -81,17 +81,17 @@ end
 
 # Primitive creation and calling functions
 
-function createHeader(name::AbstractString)
+function createHeader(name::AbstractString, flags::Int64)
     mem[mem[HERE]] = mem[LATEST]
     mem[LATEST] = mem[HERE]
     mem[HERE] += 1
 
-    mem[mem[HERE]] = length(name); mem[HERE] += 1
+    mem[mem[HERE]] = length(name) + flags; mem[HERE] += 1
     mem[mem[HERE]:(mem[HERE]+length(name)-1)] = [Int(c) for c in name]; mem[HERE] += length(name)
 end
 
-function defPrim(name::AbstractString, f::Function)
-    createHeader(name)
+function defPrim(name::AbstractString, f::Function; flags::Int64=0)
+    createHeader(name, flags)
 
     push!(primitives, f)
     mem[mem[HERE]] = -length(primitives)
@@ -100,102 +100,106 @@ function defPrim(name::AbstractString, f::Function)
     return -length(primitives)
 end
 
-callPrim(reg::Reg, addr::Int64) = primitives[-addr](reg)
+callPrim(addr::Int64) = primitives[-addr]()
 
-defExistingVar(name::AbstractString, varAddr::Int64) = defPrim(name, eval(:((reg) -> begin
-    pushPS(reg, $(varAddr))
-    return NEXT
-end)))
+function defExistingVar(name::AbstractString, varAddr::Int64; flags::Int64=0)
+    defPrim(name, eval(:(() -> begin
+        pushPS($(varAddr))
+        return NEXT
+    end)))
+end
 
-defConst(name::AbstractString, val::Int64) = defPrim(name, eval(:((reg) -> begin
-    pushPS(reg, $(val))
-    return NEXT
-end)))
+function defConst(name::AbstractString, val::Int64; flags::Int64=0)
+    defPrim(name, eval(:(() -> begin
+        pushPS($(val))
+        return NEXT
+    end)))
+end
 
-function defNewVar(name::AbstractString, initial::Int64)
-    createHeader(name)
+function defNewVar(name::AbstractString, initial::Int64; flags::Int64=0)
+    createHeader(name, flags)
     
     varAddr = mem[HERE] + 1
-    push!(primitives, eval(:((reg) -> begin
-        pushPS(reg, $(varAddr))
+    push!(primitives, eval(:(() -> begin
+        pushPS($(varAddr))
         return NEXT
     end)))
     mem[mem[HERE]] = -length(primitives); mem[HERE] += 1
 
-    mem[mem[HERE]] = inital; mem[HERE] += 1
+    mem[mem[HERE]] = initial; mem[HERE] += 1
 
     return varAddr
 end
 
 # Threading Primitives
 
-NEXT = defPrim("NEXT", (reg) -> begin
+NEXT = defPrim("NEXT", () -> begin
     reg.W = mem[reg.IP]
     reg.IP += 1
     X = mem[reg.W]
     return X
 end)
 
-DOCOL = defPrim("DOCOL", (reg) -> begin
-    pushRS(reg, reg.IP)
+DOCOL = defPrim("DOCOL", () -> begin
+    pushRS(reg.IP)
     reg.IP = reg.W + 1
     return NEXT
 end)
 
-EXIT = defPrim("EXIT", (reg) -> begin
-    reg.IP = popRS(reg)
+EXIT = defPrim("EXIT", () -> begin
+    reg.IP = popRS()
     return NEXT
 end)
 
 
 # Basic forth primitives
 
-DROP = defPrim("DROP", (reg) -> begin
-    popPS(reg)
+DROP = defPrim("DROP", () -> begin
+    popPS()
     return NEXT
 end)
 
-SWAP = defPrim("SWAP", (reg) -> begin
+SWAP = defPrim("SWAP", () -> begin
     mem[reg.PSP], mem[reg.PSP-1] = mem[reg.PSP-1], mem[reg.PSP]
     return NEXT
 end)
 
-DUP = defPrim("DUP", (reg) -> begin
-    pushPS(reg, mem[reg.PSP])
+DUP = defPrim("DUP", () -> begin
+    pushPS(mem[reg.PSP])
     return NEXT
 end)
 
-LIT = defPrim("LIT", (reg) -> begin
-    pushPS(reg, mem[reg.IP])
+LIT = defPrim("LIT", () -> begin
+    pushPS(mem[reg.IP])
     reg.IP += 1
     return NEXT
 end)
 
 # Memory primitives
 
-STORE = defPrim("!", (reg) -> begin
-    addr = popPS(reg)
-    dat = popPS(reg)
+STORE = defPrim("!", () -> begin
+    addr = popPS()
+    dat = popPS()
     mem[addr] = dat
     return NEXT
 end)
 
-FETCH = defPrim("@", (reg) -> begin
-    addr = popPS(reg)
-    pushPS(reg, mem[addr])
+FETCH = defPrim("@", () -> begin
+    addr = popPS()
+    pushPS(mem[addr])
     return NEXT
 end)
 
-ADDSTORE = defPrim("+!", (reg) -> begin
-    addr = popPS(reg)
-    toAdd = popPS(reg)
+ADDSTORE = defPrim("+!", () -> begin
+    addr = popPS()
+    toAdd = popPS()
     mem[addr] += toAdd
     return NEXT
 end)
 
-SUBSTORE = defPrim("-!", (reg) -> begin
-    addr = popPS(reg)
-    toSub = popPS(reg)
+SUBSTORE = defPrim("-!", () -> begin
+    addr = popPS()
+    toSub = popPS()
     mem[addr] -= toSub
     return NEXT
 end)
@@ -217,49 +221,49 @@ defConst("DOCOL", DOCOL)
 
 # Return Stack
 
-TOR = defPrim(">R", (reg) -> begin
-    pushRS(reg, popPS(reg))
+TOR = defPrim(">R", () -> begin
+    pushRS(popPS())
     return NEXT
 end)
 
-FROMR = defPrim("R>", (reg) -> begin
-    pushPS(reg, popRS(reg))
+FROMR = defPrim("R>", () -> begin
+    pushPS(popRS())
     return NEXT
 end)
 
-RSPFETCH = defPrim("RSP@", (reg) -> begin
-    pushPS(reg, RSP)
+RSPFETCH = defPrim("RSP@", () -> begin
+    pushPS(RSP)
     return NEXT
 end)
 
-RSPSTORE = defPrim("RSP!", (reg) -> begin
-    RSP = popPS(reg)
+RSPSTORE = defPrim("RSP!", () -> begin
+    RSP = popPS()
     return NEXT
 end)
 
-RDROP = defPrim("RDROP", (reg) -> begin
-    popRS(reg)
+RDROP = defPrim("RDROP", () -> begin
+    popRS()
     return NEXT
 end)
 
 # Parameter Stack
 
-PSPFETCH = defPrim("PSP@", (reg) -> begin
-    pushPS(reg, PSP)
+PSPFETCH = defPrim("PSP@", () -> begin
+    pushPS(PSP)
     return NEXT
 end)
 
-PSPSTORE = defPrim("PSP!", (reg) -> begin
-    PSP = popPS(reg)
+PSPSTORE = defPrim("PSP!", () -> begin
+    PSP = popPS()
     return NEXT
 end)
 
 # I/O
 
-#defConst("TIB", tib)
-#defVar("#TIB", :numtib)
-#defVar(">IN", :toin)
-#
+defConst("TIB", TIB)
+NUMTIB = defNewVar("#TIB", 0)
+TOIN = defNewVar(">IN", TIB)
+
 #KEY = defPrim("KEY", (reg) -> begin
 #    if toin >= numtib
 #
@@ -311,6 +315,20 @@ function coredump(startAddr::Int64; count::Int64 = 16, cellsPerLine::Int64 = 8)
         if i%cellsPerLine == cellsPerLine-1
             println(string("\t", ASCIIString(chars)))
         end
+    end
+end
+
+function dumpPS()
+    count = reg.PSP - mem[PSP0]
+
+    if count > 0
+        print("<$count>")
+        for i in (mem[PSP0]+1):reg.PSP
+            print(" $(mem[i])")
+        end
+        println()
+    else
+        println("Parameter stack empty")
     end
 end
 
