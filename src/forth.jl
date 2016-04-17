@@ -414,7 +414,7 @@ WORD = defPrim("WORD", () -> begin
         callPrim(KEY)
         c = Char(popPS())
 
-        if c == ' ' || c == '\t'
+        if c == ' ' || c == '\t' || c == '\n'
             break
         end
     end
@@ -426,12 +426,24 @@ WORD = defPrim("WORD", () -> begin
 
     return NEXT
 end)
-#
-#NUMBER = defPrim("NUMBER", (reg) -> begin
-#
-#    return NEXT
-#end)
-#
+
+NUMBER = defPrim("NUMBER", () -> begin
+
+    wordLen = popPS()
+    wordAddr = popPS()
+
+    s = ASCIIString([Char(c) for c in mem[wordAddr:(wordAddr+wordLen-1)]])
+
+    try
+        pushPS(parse(Int64, s, mem[BASE]))
+        pushPS(0)
+    catch
+        pushPS(1) # Error indication
+    end
+
+    return NEXT
+end)
+
 #### VM loop ####
 #function runVM(reg::Reg)
 #    jmp = NEXT
