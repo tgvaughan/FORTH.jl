@@ -108,7 +108,7 @@ function createHeader(name::AbstractString, flags::Int64)
     mem[LATEST] = mem[HERE]
     mem[HERE] += 1
 
-    mem[mem[HERE]] = length(name) + flags; mem[HERE] += 1
+    mem[mem[HERE]] = length(name) | flags; mem[HERE] += 1
     mem[mem[HERE]:(mem[HERE]+length(name)-1)] = [Int(c) for c in name]; mem[HERE] += length(name)
 end
 
@@ -308,8 +308,9 @@ BASE = defNewVar("BASE", 10)
 defConst("VERSION", 1)
 defConst("DOCOL", DOCOL)
 defConst("DICT", DICT)
-F_IMMED = defConst("F_IMMED", 100)
-F_HIDEN = defConst("F_HIDDEN", 1000)
+F_IMMED = defConst("F_IMMED", 128)
+F_HIDDEN = defConst("F_HIDDEN", 256)
+F_LENMASK = defConst("F_LENMASK", 127)
 
 # Return Stack
 
@@ -440,6 +441,50 @@ NUMBER = defPrim("NUMBER", () -> begin
     catch
         pushPS(1) # Error indication
     end
+
+    return NEXT
+end)
+
+# Dictionary searches
+
+FIND = defPrim("FIND", () -> begin
+
+    wordLen = popPS()
+    wordAddr = popPS()
+    word = ASCIIString([Char(c) for c in mem[wordAddr:(wordAddr+wordLen-1)]])
+
+    latest = mem[LATEST]
+    
+    while latest>0
+        lenAndFlags = mem[latest+1]
+        len = lenAndFlags & F_LENMASK
+        hidden = (lenAndFlags & F_HIDDEN) == F_HIDDEN
+
+        if hidden || len != wordLen
+            latest = mem[latest]
+            continue
+        end
+        
+        thisAddr = latest+2
+        thisWord = ASCIIString([Char(c) for c in mem[thisAddr:(thisAddr+len-1)]])
+
+        if thisWord == word
+            break
+        end
+    end
+
+    pushPS(latest)
+
+    return NEXT
+end)
+
+TOCFA = defPrim(">CFA", () -> begin
+
+    addr = popPS()
+    lenAndFlags = mem[addr+1]
+    len = lenAndFlags & F_LENMASK
+
+    pushPS(addr + 1 + len)
 
     return NEXT
 end)
