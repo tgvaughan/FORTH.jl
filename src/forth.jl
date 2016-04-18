@@ -659,6 +659,61 @@ end)
 
 TODFA = defWord(">DFA", [TOCFA, INCR, EXIT])
 
+# Compilation
+
+CREATE = defPrim("CREATE", () -> begin
+
+    wordLen = popPS()
+    wordAddr = popPS()
+    word = ASCIIString([Char(c) for c in mem[wordAddr:(wordAddr+wordLen-1)]])
+
+    mem[mem[HERE]] = mem[LATEST]; mem[HERE] += 1
+    mem[LATEST] = mem[HERE]
+    mem[mem[HERE]] = wordLen; mem[HERE] += 1
+
+    mem[mem[HERE]:(mem[HERE]+wordLen-1)] = collect(Int64, word)
+    mem[HERE] += wordLen
+
+    return mem[NEXT]
+end)
+
+COMMA = defPrim(",", () -> begin
+    mem[mem[HERE]] = popPS()
+    mem[HERE] += 1
+
+    return mem[NEXT]
+end)
+
+LBRAC = defPrim("[", () -> begin
+    mem[STATE] = 0
+    return mem[NEXT]
+end, flags=F_IMMEDIATE)
+
+RBRAC = defPrim("]", () -> begin
+    mem[STATE] = 1
+    return mem[NEXT]
+end, flags=F_IMMEDIATE)
+
+HIDDEN = defPrim("HIDDEN", () -> begin
+    addr = popPS() + 1
+    mem[addr] = mem[addr] $ F_HIDDEN
+    reurn mem[NEXT]
+end)
+
+COLON = defWord(":",
+    [WORD,
+    CREATE,
+    LIT, DOCOL, COMMA,
+    LATEST, FETCH, HIDDEN,
+    RBRAC,
+    EXIT])
+
+SEMICOLON = defWord(";",
+    [LIT, EXIT, COMMA,
+    LATEST, FETCH, HIDDEN,
+    LBRAC,
+    EXIT], flags=F_IMMEDIATE)
+
 #### VM loop ####
 function runVM()
     jmp = NEXT
