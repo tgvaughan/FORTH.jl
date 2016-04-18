@@ -115,11 +115,12 @@ end
 function defPrim(name::AbstractString, f::Function; flags::Int64=0)
     createHeader(name, flags)
 
+    codeWordAddr = mem[HERE]
     push!(primitives, f)
-    mem[mem[HERE]] = -length(primitives)
+    mem[codeWordAddr] = -length(primitives)
     mem[HERE] += 1
 
-    return -length(primitives)
+    return codeWordAddr
 end
 
 callPrim(addr::Int64) = primitives[-addr]()
@@ -127,7 +128,7 @@ callPrim(addr::Int64) = primitives[-addr]()
 function defExistingVar(name::AbstractString, varAddr::Int64; flags::Int64=0)
     defPrim(name, eval(:(() -> begin
         pushPS($(varAddr))
-        return NEXT
+        return mem[NEXT]
     end)))
 end
 
@@ -137,7 +138,7 @@ function defNewVar(name::AbstractString, initial::Int64; flags::Int64=0)
     varAddr = mem[HERE] + 1
     push!(primitives, eval(:(() -> begin
         pushPS($(varAddr))
-        return NEXT
+        return mem[NEXT]
     end)))
     mem[mem[HERE]] = -length(primitives); mem[HERE] += 1
 
@@ -149,7 +150,7 @@ end
 function defConst(name::AbstractString, val::Int64; flags::Int64=0)
     defPrim(name, eval(:(() -> begin
         pushPS($(val))
-        return NEXT
+        return mem[NEXT]
     end)))
 
     return val
@@ -159,7 +160,7 @@ function defWord(name::AbstractString, wordAddrs::Array{Int64,1}; flags::Int64=0
     createHeader(name, flags)
 
     addr = mem[HERE]
-    mem[mem[HERE]] = DOCOL
+    mem[mem[HERE]] = mem[DOCOL]
     mem[HERE] += 1
 
     for wordAddr in wordAddrs
@@ -170,24 +171,23 @@ function defWord(name::AbstractString, wordAddrs::Array{Int64,1}; flags::Int64=0
     return addr
 end
 
-# Threading Primitives
+# Threading Primitives (inner interpreter)
 
 NEXT = defPrim("NEXT", () -> begin
     reg.W = mem[reg.IP]
     reg.IP += 1
-    X = mem[reg.W]
-    return X
+    return mem[reg.W]
 end)
 
 DOCOL = defPrim("DOCOL", () -> begin
     pushRS(reg.IP)
     reg.IP = reg.W + 1
-    return NEXT
+    return mem[NEXT]
 end)
 
 EXIT = defPrim("EXIT", () -> begin
     reg.IP = popRS()
-    return NEXT
+    return mem[NEXT]
 end)
 
 
@@ -195,7 +195,7 @@ end)
 
 DROP = defPrim("DROP", () -> begin
     popPS()
-    return NEXT
+    return mem[NEXT]
 end)
 
 SWAP = defPrim("SWAP", () -> begin
@@ -203,18 +203,18 @@ SWAP = defPrim("SWAP", () -> begin
     b = popPS()
     pushPS(a)
     pushPS(b)
-    return NEXT
+    return mem[NEXT]
 end)
 
 DUP = defPrim("DUP", () -> begin
     pushPS(mem[reg.PSP])
-    return NEXT
+    return mem[NEXT]
 end)
 
 OVER = defPrim("OVER", () -> begin
     ensurePSDepth(2)
     pushPS(mem[reg.PSP-1])
-    return NEXT
+    return mem[NEXT]
 end)
 
 ROT = defPrim("ROT", () -> begin
@@ -224,7 +224,7 @@ ROT = defPrim("ROT", () -> begin
     pushPS(a)
     pushPS(c)
     pushPS(b)
-    return NEXT
+    return mem[NEXT]
 end)
 
 NROT = defPrim("-ROT", () -> begin
@@ -234,13 +234,13 @@ NROT = defPrim("-ROT", () -> begin
     pushPS(b)
     pushPS(a)
     pushPS(c)
-    return NEXT
+    return mem[NEXT]
 end)
 
 TWODROP = defPrim("2DROP", () -> begin
     popPS()
     popPS()
-    return NEXT
+    return mem[NEXT]
 end)
 
 TWODUP = defPrim("2DUP", () -> begin
@@ -249,7 +249,7 @@ TWODUP = defPrim("2DUP", () -> begin
     b = mem[reg.PSP]
     pushPS(a)
     pushPS(b)
-    return NEXT
+    return mem[NEXT]
 end)
 
 TWOSWAP = defPrim("2SWAP", () -> begin
@@ -261,7 +261,7 @@ TWOSWAP = defPrim("2SWAP", () -> begin
     pushPS(a)
     pushPS(c)
     pushPS(d)
-    return NEXT
+    return mem[NEXT]
 end)
 
 QDUP = defPrim("?DUP", () -> begin
@@ -270,40 +270,40 @@ QDUP = defPrim("?DUP", () -> begin
     if val != 0
         pushPS(val)
     end
-    return NEXT
+    return mem[NEXT]
 end)
 
 INCR = defPrim("1+", () -> begin
     ensurePSDepth(1)
     mem[reg.PSP] += 1
-    return NEXT
+    return mem[NEXT]
 end)
 
 DECR = defPrim("1-", () -> begin
     ensurePSDepth(1)
     mem[reg.PSP] -= 1
-    return NEXT
+    return mem[NEXT]
 end)
 
 ADD = defPrim("+", () -> begin
     a = popPS()
     b = popPS()
     pushPS(a+b)
-    return NEXT
+    return mem[NEXT]
 end)
 
 SUB = defPrim("-", () -> begin
     a = popPS()
     b = popPS()
     pushPS(b-a)
-    return NEXT
+    return mem[NEXT]
 end)
 
 MUL = defPrim("*", () -> begin
     a = popPS()
     b = popPS()
     pushPS(a*b)
-    return NEXT
+    return mem[NEXT]
 end)
 
 DIVMOD = defPrim("/MOD", () -> begin
@@ -312,13 +312,13 @@ DIVMOD = defPrim("/MOD", () -> begin
     q,r = divrem(b,a)
     pushPS(r)
     pushPS(q)
-    return NEXT
+    return mem[NEXT]
 end)
 
 LIT = defPrim("LIT", () -> begin
     pushPS(mem[reg.IP])
     reg.IP += 1
-    return NEXT
+    return mem[NEXT]
 end)
 
 # Memory primitives
@@ -327,27 +327,27 @@ STORE = defPrim("!", () -> begin
     addr = popPS()
     dat = popPS()
     mem[addr] = dat
-    return NEXT
+    return mem[NEXT]
 end)
 
 FETCH = defPrim("@", () -> begin
     addr = popPS()
     pushPS(mem[addr])
-    return NEXT
+    return mem[NEXT]
 end)
 
 ADDSTORE = defPrim("+!", () -> begin
     addr = popPS()
     toAdd = popPS()
     mem[addr] += toAdd
-    return NEXT
+    return mem[NEXT]
 end)
 
 SUBSTORE = defPrim("-!", () -> begin
     addr = popPS()
     toSub = popPS()
     mem[addr] -= toSub
-    return NEXT
+    return mem[NEXT]
 end)
 
 
@@ -373,39 +373,39 @@ F_LENMASK = defConst("F_LENMASK", 127)
 
 TOR = defPrim(">R", () -> begin
     pushRS(popPS())
-    return NEXT
+    return mem[NEXT]
 end)
 
 FROMR = defPrim("R>", () -> begin
     pushPS(popRS())
-    return NEXT
+    return mem[NEXT]
 end)
 
 RSPFETCH = defPrim("RSP@", () -> begin
     pushPS(reg.RSP)
-    return NEXT
+    return mem[NEXT]
 end)
 
 RSPSTORE = defPrim("RSP!", () -> begin
     RSP = popPS()
-    return NEXT
+    return mem[NEXT]
 end)
 
 RDROP = defPrim("RDROP", () -> begin
     popRS()
-    return NEXT
+    return mem[NEXT]
 end)
 
 # Parameter Stack
 
 PSPFETCH = defPrim("PSP@", () -> begin
     pushPS(reg.PSP)
-    return NEXT
+    return mem[NEXT]
 end)
 
 PSPSTORE = defPrim("PSP!", () -> begin
     PSP = popPS()
-    return NEXT
+    return mem[NEXT]
 end)
 
 # I/O
@@ -425,12 +425,12 @@ KEY = defPrim("KEY", () -> begin
     pushPS(mem[TIB + mem[TOIN]])
     mem[TOIN] += 1
 
-    return NEXT
+    return mem[NEXT]
 end)
 
 EMIT = defPrim("EMIT", () -> begin
     print(Char(popPS()))
-    return NEXT
+    return mem[NEXT]
 end)
 
 WORD = defPrim("WORD", () -> begin
@@ -440,7 +440,7 @@ WORD = defPrim("WORD", () -> begin
     skip_to_end = false
     while true
 
-        callPrim(KEY)
+        callPrim(mem[KEY])
         c = Char(popPS())
 
         if c == '\\'
@@ -469,7 +469,7 @@ WORD = defPrim("WORD", () -> begin
         mem[wordAddr + offset] = Int64(c)
         offset += 1
 
-        callPrim(KEY)
+        callPrim(mem[KEY])
         c = Char(popPS())
 
         if c == ' ' || c == '\t' || c == '\n'
@@ -482,7 +482,7 @@ WORD = defPrim("WORD", () -> begin
     pushPS(wordAddr)
     pushPS(wordLen)
 
-    return NEXT
+    return mem[NEXT]
 end)
 
 NUMBER = defPrim("NUMBER", () -> begin
@@ -499,7 +499,7 @@ NUMBER = defPrim("NUMBER", () -> begin
         pushPS(1) # Error indication
     end
 
-    return NEXT
+    return mem[NEXT]
 end)
 
 # Dictionary searches
@@ -532,7 +532,7 @@ FIND = defPrim("FIND", () -> begin
 
     pushPS(latest)
 
-    return NEXT
+    return mem[NEXT]
 end)
 
 TOCFA = defPrim(">CFA", () -> begin
@@ -543,7 +543,7 @@ TOCFA = defPrim(">CFA", () -> begin
 
     pushPS(addr + 2 + len)
 
-    return NEXT
+    return mem[NEXT]
 end)
 
 TODFA = defWord(">DFA", [TOCFA, INCR, EXIT])
@@ -556,7 +556,7 @@ end
 
 # Debugging tools
 
-function coredump(startAddr::Int64; count::Int64 = 16, cellsPerLine::Int64 = 8)
+function dump(startAddr::Int64; count::Int64 = 100, cellsPerLine::Int64 = 10)
     chars = Array{Char,1}(cellsPerLine)
 
     for i in 0:(count-1)
@@ -590,6 +590,20 @@ function printPS()
         println()
     else
         println("Parameter stack empty")
+    end
+end
+
+function printRS()
+    count = reg.RSP - mem[RSP0]
+
+    if count > 0
+        print("<$count>")
+        for i in (mem[RSP0]+1):reg.RSP
+            print(" $(mem[i])")
+        end
+        println()
+    else
+        println("Return stack empty")
     end
 end
 
