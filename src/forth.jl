@@ -190,7 +190,6 @@ EXIT = defPrim("EXIT", () -> begin
     return mem[NEXT]
 end)
 
-
 # Basic forth primitives
 
 DROP = defPrim("DROP", () -> begin
@@ -285,35 +284,147 @@ DECR = defPrim("1-", () -> begin
     return mem[NEXT]
 end)
 
+INCR2 = defPrim("2+", () -> begin
+    ensurePSDepth(1)
+    mem[reg.PSP] += 2
+    return mem[NEXT]
+end)
+
+DECR2 = defPrim("2-", () -> begin
+    ensurePSDepth(1)
+    mem[reg.PSP] -= 2
+    return mem[NEXT]
+end)
+
 ADD = defPrim("+", () -> begin
-    a = popPS()
     b = popPS()
+    a = popPS()
     pushPS(a+b)
     return mem[NEXT]
 end)
 
 SUB = defPrim("-", () -> begin
-    a = popPS()
     b = popPS()
-    pushPS(b-a)
+    a = popPS()
+    pushPS(a-b)
     return mem[NEXT]
 end)
 
 MUL = defPrim("*", () -> begin
-    a = popPS()
     b = popPS()
+    a = popPS()
     pushPS(a*b)
     return mem[NEXT]
 end)
 
 DIVMOD = defPrim("/MOD", () -> begin
-    a = popPS()
     b = popPS()
-    q,r = divrem(b,a)
+    a = popPS()
+    q,r = divrem(a,b)
     pushPS(r)
     pushPS(q)
     return mem[NEXT]
 end)
+
+EQU = defPrim("=", () -> begin
+    b = popPS()
+    a = popPS()
+    pushPS(a==b ? -1 : 0)
+    return mem[NEXT]
+end)
+
+NEQU = defPrim("<>", () -> begin
+    b = popPS()
+    a = popPS()
+    pushPS(a!=b ? -1 : 0)
+    return mem[NEXT]
+end)
+
+LT = defPrim("<", () -> begin
+    b = popPS()
+    a = popPS()
+    pushPS(a<b ? -1 : 0)
+    return mem[NEXT]
+end)
+
+GT = defPrim(">", () -> begin
+    b = popPS()
+    a = popPS()
+    pushPS(a>b ? -1 : 0)
+    return mem[NEXT]
+end)
+
+LE = defPrim("<=", () -> begin
+    b = popPS()
+    a = popPS()
+    pushPS(a<=b ? -1 : 0)
+    return mem[NEXT]
+end)
+
+GE = defPrim(">=", () -> begin
+    b = popPS()
+    a = popPS()
+    pushPS(a>=b ? -1 : 0)
+    return mem[NEXT]
+end)
+
+ZEQU = defPrim("0=", () -> begin
+    pushPS(popPS() == 0 ? -1 : 0)
+    return mem[NEXT]
+end)
+
+ZNEQU = defPrim("0<>", () -> begin
+    pushPS(popPS() != 0 ? -1 : 0)
+    return mem[NEXT]
+end)
+
+ZLT = defPrim("0<", () -> begin
+    pushPS(popPS() < 0 ? -1 : 0)
+    return mem[NEXT]
+end)
+
+ZGT = defPrim("0>", () -> begin
+    pushPS(popPS() > 0 ? -1 : 0)
+    return mem[NEXT]
+end)
+
+ZLE = defPrim("0<=", () -> begin
+    pushPS(popPS() <= 0 ? -1 : 0)
+    return mem[NEXT]
+end)
+
+ZGE = defPrim("0>=", () -> begin
+    pushPS(popPS() >= 0 ? -1 : 0)
+    return mem[NEXT]
+end)
+
+AND = defPrim("AND", () -> begin
+    b = popPS()
+    a = popPS()
+    pushPS(a & b)
+    return mem[NEXT]
+end)
+
+OR = defPrim("OR", () -> begin
+    b = popPS()
+    a = popPS()
+    pushPS(a | b)
+    return mem[NEXT]
+end)
+
+XOR = defPrim("XOR", () -> begin
+    b = popPS()
+    a = popPS()
+    pushPS(a $ b)
+    return mem[NEXT]
+end)
+
+INVERT = defPrim("INVERT", () -> begin
+    pushPS(~popPS())
+    return mem[NEXT]
+end)
+
+# Literals
 
 LIT = defPrim("LIT", () -> begin
     pushPS(mem[reg.IP])
