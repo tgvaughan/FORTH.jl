@@ -700,6 +700,12 @@ HIDDEN = defPrim("HIDDEN", () -> begin
     reurn mem[NEXT]
 end)
 
+HIDE = defWord("HIDE",
+    [WORD,
+    FIND,
+    HIDDEN,
+    EXIT])
+
 COLON = defWord(":",
     [WORD,
     CREATE,
@@ -713,6 +719,12 @@ SEMICOLON = defWord(";",
     LATEST, FETCH, HIDDEN,
     LBRAC,
     EXIT], flags=F_IMMEDIATE)
+
+IMMEDIATE = defPrim("IMMEDIATE", () -> begin
+    lenAndFlagsAddr = mem[LATEST] + 1
+    mem[lenAndFlagsAddr] = mem[lenAndFlagsAddr] $ F_IMMEDIATE
+    return mem[NEXT]
+end, flags=F_IMMEDIATE)
 
 #### VM loop ####
 function runVM()
