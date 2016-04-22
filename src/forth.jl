@@ -687,17 +687,17 @@ end)
 LBRAC = defPrim("[", () -> begin
     mem[STATE] = 0
     return mem[NEXT]
-end, flags=F_IMMEDIATE)
+end, flags=F_IMMED)
 
 RBRAC = defPrim("]", () -> begin
     mem[STATE] = 1
     return mem[NEXT]
-end, flags=F_IMMEDIATE)
+end, flags=F_IMMED)
 
 HIDDEN = defPrim("HIDDEN", () -> begin
     addr = popPS() + 1
     mem[addr] = mem[addr] $ F_HIDDEN
-    reurn mem[NEXT]
+    return mem[NEXT]
 end)
 
 HIDE = defWord("HIDE",
@@ -718,13 +718,13 @@ SEMICOLON = defWord(";",
     [LIT, EXIT, COMMA,
     LATEST, FETCH, HIDDEN,
     LBRAC,
-    EXIT], flags=F_IMMEDIATE)
+    EXIT], flags=F_IMMED)
 
 IMMEDIATE = defPrim("IMMEDIATE", () -> begin
     lenAndFlagsAddr = mem[LATEST] + 1
-    mem[lenAndFlagsAddr] = mem[lenAndFlagsAddr] $ F_IMMEDIATE
+    mem[lenAndFlagsAddr] = mem[lenAndFlagsAddr] $ F_IMMED
     return mem[NEXT]
-end, flags=F_IMMEDIATE)
+end, flags=F_IMMED)
 
 TICK = defWord("'", [WORD, FIND, TOCFA, EXIT])
 
@@ -766,7 +766,7 @@ function dump(startAddr::Int64; count::Int64 = 100, cellsPerLine::Int64 = 10)
 
         print("\t$(mem[addr]) ")
 
-        if (mem[addr]>=32 && mem[addr]<176)
+        if (mem[addr]>=32 && mem[addr]<128)
             chars[i%cellsPerLine + 1] = Char(mem[addr])
         else
             chars[i%cellsPerLine + 1] = '.'
