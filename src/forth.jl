@@ -142,6 +142,7 @@ end
 function defNewVar(name::AbstractString, initial::Int64; flags::Int64=0)
     createHeader(name, flags)
     
+    codeWordAddr = mem[HERE]
     varAddr = mem[HERE] + 1
     push!(primitives, eval(:(() -> begin
         pushPS($(varAddr))
@@ -151,7 +152,7 @@ function defNewVar(name::AbstractString, initial::Int64; flags::Int64=0)
 
     mem[mem[HERE]] = initial; mem[HERE] += 1
 
-    return varAddr
+    return varAddr, codeWordAddr
 end
 
 function defConst(name::AbstractString, val::Int64; flags::Int64=0)
@@ -471,12 +472,12 @@ end)
 
 # Built-in variables
 
-defExistingVar("HERE", HERE)
-defExistingVar("LATEST", LATEST)
-defExistingVar("PSP0", PSP0)
-defExistingVar("RSP0", RSP0)
-STATE = defNewVar("STATE", 0)
-BASE = defNewVar("BASE", 10)
+HERE_CFA = defExistingVar("HERE", HERE)
+LATEST_CFA = defExistingVar("LATEST", LATEST)
+PSP0_CFA = defExistingVar("PSP0", PSP0)
+RSP0_CFA = defExistingVar("RSP0", RSP0)
+STATE, STATE_CFA = defNewVar("STATE", 0)
+BASE, BASE_CFA = defNewVar("BASE", 10)
 
 # Constants
 
@@ -529,8 +530,8 @@ end)
 # I/O
 
 defConst("TIB", TIB)
-NUMTIB = defNewVar("#TIB", 0)
-TOIN = defNewVar(">IN", 0)
+NUMTIB, NUMTIB_CFA = defNewVar("#TIB", 0)
+TOIN, TOIN_CFA = defNewVar(">IN", 0)
 
 KEY = defPrim("KEY", () -> begin
     if mem[TOIN] >= mem[NUMTIB]
@@ -758,6 +759,42 @@ LITSTRING = defPrim("LITSTRING", () -> begin
 
     return mem[NEXT]
 end)
+
+TELL = defPrim("TELL", () -> begin
+    len = popPS()
+    addr = popPS()
+    str = getString(addr, len)
+    print(str)
+    return mem[NEXT]
+end)
+
+# Outer interpreter
+
+INTERPRET = defPrim("INTERPRET", () -> begin
+
+    callPrim(mem[WORD])
+    callPrim(mem[FIND])
+
+    wordAddr = mem[reg.PSP]
+
+    if wordAddr>0
+        # Word in dictionary
+
+        lenAndFlags = mem[wordAddr+1]
+        callPrim(mem[TOCFA])
+        wordCFA = popPS()
+
+    else
+        # Not in dictionary
+    end
+
+    return mem[NEXT]
+end)
+
+QUIT = defWord("QUIT",
+    [RSP0_CFA, RSPSTORE,
+    INTERPRET,
+    BRANCH,-2])
 
 #### VM loop ####
 function runVM()
