@@ -101,6 +101,13 @@ function popPS()
     return val
 end
 
+# Handy functions for adding/retrieving strings to/from memory.
+
+getString(addr::Int64, len::Int64) = ASCIIString([Char(c) for c in mem[addr:(addr+len-1)]])
+function putString(str::ASCIIString, addr::Int64)
+    mem[addr:(addr+length(str)-1)] = [Int64(c) for c in str]
+end
+
 # Primitive creation and calling functions
 
 function createHeader(name::AbstractString, flags::Int64)
@@ -109,7 +116,7 @@ function createHeader(name::AbstractString, flags::Int64)
     mem[HERE] += 1
 
     mem[mem[HERE]] = length(name) | flags; mem[HERE] += 1
-    mem[mem[HERE]:(mem[HERE]+length(name)-1)] = [Int(c) for c in name]; mem[HERE] += length(name)
+    putString(name, mem[HERE]); mem[HERE] += length(name)
 end
 
 function defPrim(name::AbstractString, f::Function; flags::Int64=0)
@@ -530,7 +537,7 @@ KEY = defPrim("KEY", () -> begin
         mem[TOIN] = 0
         line = readline()
         mem[NUMTIB] = length(line)
-        mem[TIB:(TIB+mem[NUMTIB]-1)] = [Int64(c) for c in collect(line)]
+        putString(line, TIB)
     end
 
     pushPS(mem[TIB + mem[TOIN]])
@@ -601,7 +608,7 @@ NUMBER = defPrim("NUMBER", () -> begin
     wordLen = popPS()
     wordAddr = popPS()
 
-    s = ASCIIString([Char(c) for c in mem[wordAddr:(wordAddr+wordLen-1)]])
+    s = getString(wordAddr, wordLen)
 
     try
         pushPS(parse(Int64, s, mem[BASE]))
@@ -619,22 +626,22 @@ FIND = defPrim("FIND", () -> begin
 
     wordLen = popPS()
     wordAddr = popPS()
-    word = ASCIIString([Char(c) for c in mem[wordAddr:(wordAddr+wordLen-1)]])
+    word = getString(wordAddr, wordLen)
 
-    latest = mem[LATEST]
+    latest = LATEST
     
-    while latest>0
+    i = 0
+    while (latest = mem[latest]) > 0
         lenAndFlags = mem[latest+1]
         len = lenAndFlags & F_LENMASK
         hidden = (lenAndFlags & F_HIDDEN) == F_HIDDEN
 
         if hidden || len != wordLen
-            latest = mem[latest]
             continue
         end
         
         thisAddr = latest+2
-        thisWord = ASCIIString([Char(c) for c in mem[thisAddr:(thisAddr+len-1)]])
+        thisWord = getString(thisAddr, len)
 
         if thisWord == word
             break
@@ -665,14 +672,9 @@ CREATE = defPrim("CREATE", () -> begin
 
     wordLen = popPS()
     wordAddr = popPS()
-    word = ASCIIString([Char(c) for c in mem[wordAddr:(wordAddr+wordLen-1)]])
+    word = getString(wordAddr, wordLen)
 
-    mem[mem[HERE]] = mem[LATEST]; mem[HERE] += 1
-    mem[LATEST] = mem[HERE]
-    mem[mem[HERE]] = wordLen; mem[HERE] += 1
-
-    mem[mem[HERE]:(mem[HERE]+wordLen-1)] = collect(Int64, word)
-    mem[HERE] += wordLen
+    createHeader(word, 0)
 
     return mem[NEXT]
 end)
@@ -746,6 +748,16 @@ ZBRANCH = defPrim("0BRANCH", () -> begin
 end)
 
 # Strings
+
+LITSTRING = defPrim("LITSTRING", () -> begin
+    len = mem[reg.IP]
+    reg.IP += 1
+    pushPS(reg.IP)
+    pushPS(len)
+    reg.IP += len
+
+    return mem[NEXT]
+end)
 
 #### VM loop ####
 function runVM()
