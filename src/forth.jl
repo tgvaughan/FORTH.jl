@@ -726,9 +726,30 @@ IMMEDIATE = defPrim("IMMEDIATE", () -> begin
     return mem[NEXT]
 end, flags=F_IMMEDIATE)
 
+TICK = defWord("'", [WORD, FIND, TOCFA, EXIT])
+
+# Branching
+
+BRANCH = defPrim("BRANCH", () -> begin
+    reg.IP += mem[reg.IP]
+    return mem[NEXT]
+end)
+
+ZBRANCH = defPrim("0BRANCH", () -> begin
+    if (popPS() == 0)
+        reg.IP += mem[reg.IP]
+    else
+        reg.IP += 1
+    end
+
+    return mem[NEXT]
+end)
+
+# Strings
+
 #### VM loop ####
 function runVM()
-    jmp = NEXT
+    jmp = mem[NEXT]
     while (jmp = callPrim(jmp)) != 0 end
 end
 
