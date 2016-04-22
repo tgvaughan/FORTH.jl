@@ -770,23 +770,33 @@ end
 function dump(startAddr::Int64; count::Int64 = 100, cellsPerLine::Int64 = 10)
     chars = Array{Char,1}(cellsPerLine)
 
-    for i in 0:(count-1)
-        addr = startAddr + i
-        if i%cellsPerLine == 0
-            print("$addr:")
+    lineStartAddr = cellsPerLine*div((startAddr-1),cellsPerLine) + 1
+    endAddr = startAddr + count - 1
+
+    q, r = divrem((endAddr-lineStartAddr+1), cellsPerLine)
+    numLines = q + (r > 0 ? 1 : 0)
+
+    i = lineStartAddr
+    for l in 1:numLines
+        print(i,":")
+
+        for c in 1:cellsPerLine
+            if i >= startAddr && i <= endAddr
+                print("\t",mem[i])
+                if mem[i]>=32 && mem[i]<128
+                    chars[c] = Char(mem[i])
+                else
+                    chars[c] = '.'
+                end
+            else
+                print("\t")
+                chars[c] = ' '
+            end
+
+            i += 1
         end
 
-        print("\t$(mem[addr]) ")
-
-        if (mem[addr]>=32 && mem[addr]<128)
-            chars[i%cellsPerLine + 1] = Char(mem[addr])
-        else
-            chars[i%cellsPerLine + 1] = '.'
-        end
-
-        if i%cellsPerLine == cellsPerLine-1
-            println(string("\t", ASCIIString(chars)))
-        end
+        println("\t", ASCIIString(chars))
     end
 end
 
