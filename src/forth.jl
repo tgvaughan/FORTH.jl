@@ -842,6 +842,11 @@ end)
 
 #### VM loop ####
 function runVM()
+    # Start with IP pointing to first instruction of outer interpreter
+    reg.IP = QUIT + 1
+
+    # Primitive processing loop.
+    # Everyting else is simply a consequence of this loop!
     jmp = mem[NEXT]
     while (jmp = callPrim(jmp)) != 0 end
 end
