@@ -824,6 +824,22 @@ QUIT = defWord("QUIT",
     INTERPRET,
     BRANCH,-2])
 
+# Odds and Ends
+
+CHAR = defPrim("CHAR", () -> begin
+    callPrim(mem[WORD])
+    wordLen = popPS()
+    wordAddr = popPS()
+    word = getString(wordAddr, wordLen)
+    pushPS(Int64(word[1]))
+
+    return mem[NEXT]
+end)
+
+EXECUTE = defPrim("EXECUTE", () -> begin
+    return mem[popPS()]
+end)
+
 #### VM loop ####
 function runVM()
     jmp = mem[NEXT]
