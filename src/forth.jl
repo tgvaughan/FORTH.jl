@@ -773,6 +773,7 @@ end)
 INTERPRET = defPrim("INTERPRET", () -> begin
 
     callPrim(mem[WORD])
+    callPrim(mem[TWODUP])
     callPrim(mem[FIND])
 
     wordAddr = mem[reg.PSP]
@@ -780,12 +781,39 @@ INTERPRET = defPrim("INTERPRET", () -> begin
     if wordAddr>0
         # Word in dictionary
 
-        lenAndFlags = mem[wordAddr+1]
+        isImmediate = (mem[wordAddr+1] & F_IMMED) != 0
         callPrim(mem[TOCFA])
-        wordCFA = popPS()
 
+        callPrim(mem[ROT]) # get rid of extra copy of word string details
+        popPS()
+        popPS()
+
+        if mem[STATE] == 0 || isImmediate
+            # Execute!
+            return mem[popPS()]
+        else
+            # Append CFA to dictionary
+            callPrim(mem[COMMA])
+        end
     else
-        # Not in dictionary
+        # Not in dictionary, assume number
+
+        popPS()
+        callPrim(mem[NUMBER])
+
+        if popPS() != 0
+            println("Parse error!")
+            return mem[NEXT]
+        end
+
+        if mem[STATE] == 0
+            # Number already on stack!
+        else
+            # Append literal to dictionary
+            pushPS(LIT)
+            callPrim(mem[COMMA])
+            callPrim(mem[COMMA])
+        end
     end
 
     return mem[NEXT]
