@@ -784,10 +784,15 @@ end)
 INTERPRET = defPrim("INTERPRET", () -> begin
 
     callPrim(mem[WORD])
+
+    wordName = getString(mem[reg.PSP-1], mem[reg.PSP])
+    println("... ", replace(wordName, "\n", "\\n"), " ...")
+
     callPrim(mem[TWODUP])
     callPrim(mem[FIND])
 
     wordAddr = mem[reg.PSP]
+
 
     if wordAddr>0
         # Word in dictionary
@@ -810,8 +815,6 @@ INTERPRET = defPrim("INTERPRET", () -> begin
         # Not in dictionary, assume number
 
         popPS()
-
-        wordName = getString(mem[reg.PSP-1], mem[reg.PSP])
 
         callPrim(mem[NUMBER])
 
@@ -840,7 +843,9 @@ QUIT = defWord("QUIT",
     BRANCH,-2])
 
 NL = defPrim("\n", () -> begin
-    println(" ok")
+    if mem[STATE] == 0
+        println(" ok")
+    end
     return mem[NEXT]
 end)
 
@@ -872,7 +877,9 @@ function runVM()
     # Primitive processing loop.
     # Everyting else is simply a consequence of this loop!
     jmp = mem[NEXT]
-    while (jmp = callPrim(jmp)) != 0 end
+    while (jmp = callPrim(jmp)) != 0
+        println("Evaluating prim $jmp")
+    end
 end
 
 # Debugging tools
