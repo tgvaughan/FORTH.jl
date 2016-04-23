@@ -584,6 +584,15 @@ WORD = defPrim("WORD", () -> begin
     wordAddr = mem[HERE]
     offset = 0
 
+    if c == '\n'
+        # Treat newline as a special word
+
+        mem[wordAddr + offset] = Int64(c)
+        pushPS(wordAddr)
+        pushPS(1)
+        return mem[NEXT]
+    end
+
     while true
         mem[wordAddr + offset] = Int64(c)
         offset += 1
@@ -592,6 +601,8 @@ WORD = defPrim("WORD", () -> begin
         c = Char(popPS())
 
         if c == ' ' || c == '\t' || c == '\n'
+            # Rewind KEY
+            mem[TOIN] -= 1
             break
         end
     end
@@ -627,7 +638,7 @@ FIND = defPrim("FIND", () -> begin
 
     wordLen = popPS()
     wordAddr = popPS()
-    word = getString(wordAddr, wordLen)
+    word = lowercase(getString(wordAddr, wordLen))
 
     latest = LATEST
     
@@ -642,9 +653,9 @@ FIND = defPrim("FIND", () -> begin
         end
         
         thisAddr = latest+2
-        thisWord = getString(thisAddr, len)
+        thisWord = lowercase(getString(thisAddr, len))
 
-        if thisWord == word
+        if lowercase(thisWord) == lowercase(word)
             break
         end
     end
@@ -799,11 +810,15 @@ INTERPRET = defPrim("INTERPRET", () -> begin
         # Not in dictionary, assume number
 
         popPS()
+
+        wordName = getString(mem[reg.PSP-1], mem[reg.PSP])
+
         callPrim(mem[NUMBER])
 
         if popPS() != 0
-            println("Parse error!")
+            println("Parse error at word: '$wordName'")
             return mem[NEXT]
+        else
         end
 
         if mem[STATE] == 0
@@ -824,6 +839,11 @@ QUIT = defWord("QUIT",
     INTERPRET,
     BRANCH,-2])
 
+NL = defPrim("\n", () -> begin
+    println(" ok")
+    return mem[NEXT]
+end)
+
 # Odds and Ends
 
 CHAR = defPrim("CHAR", () -> begin
@@ -838,6 +858,10 @@ end)
 
 EXECUTE = defPrim("EXECUTE", () -> begin
     return mem[popPS()]
+end)
+
+BYE = defPrim("BYE", () -> begin
+    return 0
 end)
 
 #### VM loop ####
