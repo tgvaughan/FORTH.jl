@@ -31,6 +31,7 @@ size_TIB = 1096  # Terminal input buffer size
 
 mem = Array{Int64,1}(size_mem)
 primitives = Array{Function,1}()
+primNames = Array{ASCIIString,1}()
 
 # Built-in variables
 
@@ -126,6 +127,8 @@ function defPrim(name::AbstractString, f::Function; flags::Int64=0)
     push!(primitives, f)
     mem[codeWordAddr] = -length(primitives)
     mem[HERE] += 1
+
+    push!(primNames, name)
 
     return codeWordAddr
 end
@@ -878,7 +881,7 @@ function runVM()
     # Everyting else is simply a consequence of this loop!
     jmp = mem[NEXT]
     while (jmp = callPrim(jmp)) != 0
-        println("Evaluating prim $jmp")
+        println("Evaluating prim $jmp [$(primNames[-jmp])]")
     end
 end
 
