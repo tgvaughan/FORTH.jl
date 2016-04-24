@@ -15,5 +15,5 @@
 
 : LITERAL IMMEDIATE ' LIT , , ;
 
-: ':' [ CHAR : ] ;
+: ':' [ CHAR : ] LITERAL ;
 

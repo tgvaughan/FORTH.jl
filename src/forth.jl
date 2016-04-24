@@ -1017,4 +1017,23 @@ function printRS()
     end
 end
 
+DOT = defPrimWord(".", () -> begin
+    print(popPS())
+    return NEXT
+end)
+
+DOTS = defPrimWord(".s", () -> begin
+    printPS()
+    return NEXT
+end)
+
+DUMP = defPrimWord("DUMP", () -> begin
+    count = popPS()
+    addr = popPS()
+
+    dump(addr, count=count)
+
+    return NEXT
+end)
+
 end
