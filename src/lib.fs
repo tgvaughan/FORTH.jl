@@ -18,5 +18,5 @@
     ,
     ;
 
-: ':' [ CHAR : ] LITERAL ;
+\ : ':' [ CHAR : ] LITERAL ;
 

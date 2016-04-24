@@ -558,18 +558,20 @@ end)
 defConst("TIB", TIB)
 NUMTIB, NUMTIB_CFA = defNewVar("#TIB", 0)
 TOIN, TOIN_CFA = defNewVar(">IN", 0)
+EOF = defConst("EOF", 4)
 
 KEY = defPrimWord("KEY", () -> begin
     if mem[TOIN] >= mem[NUMTIB]
         mem[TOIN] = 0
 
-        if reg.source != STDIN && eof(reg.source)
-            reg.source = STDIN
+        if !eof(reg.source)
+            line = readline(reg.source)
+            mem[NUMTIB] = length(line)
+            putString(line, TIB)
+        else
+            mem[NUMTIB] = 1
+            mem[TIB] = EOF
         end
-
-        line = readline(reg.source)
-        mem[NUMTIB] = length(line)
-        putString(line, TIB)
     end
 
     pushPS(mem[TIB + mem[TOIN]])
@@ -584,8 +586,9 @@ EMIT = defPrimWord("EMIT", () -> begin
 end)
 
 WORD = defPrimWord("WORD", () -> begin
-    
-    c = -1
+
+    eof_char = Char(EOF)
+    c = eof_char
 
     skip_to_end = false
     while true
@@ -599,7 +602,7 @@ WORD = defPrimWord("WORD", () -> begin
         end
 
         if skip_to_end
-            if c == '\n'
+            if c == '\n' || c == eof_char
                 skip_to_end = false
             end
             continue
@@ -615,7 +618,7 @@ WORD = defPrimWord("WORD", () -> begin
     wordAddr = mem[HERE]
     offset = 0
 
-    if c == '\n'
+    if c == '\n' || c == eof_char
         # Treat newline as a special word
 
         mem[wordAddr + offset] = Int64(c)
@@ -631,7 +634,7 @@ WORD = defPrimWord("WORD", () -> begin
         callPrim(mem[KEY])
         c = Char(popPS())
 
-        if c == ' ' || c == '\t' || c == '\n'
+        if c == ' ' || c == '\t' || c == '\n' || c == eof_char
             # Rewind KEY
             mem[TOIN] -= 1
             break
@@ -888,6 +891,31 @@ NL = defPrimWord("\n", () -> begin
     return NEXT
 end, flags=F_IMMED)
 
+INCLUDE = defPrimWord("INCLUDE", () -> begin
+
+    callPrim(mem[WORD])
+    wordLen = popPS()
+    wordAddr = popPS()
+    word = getString(wordAddr, wordLen)
+
+    reg.source = open(word, "r")
+
+    # Clear input buffer
+    mem[NUMTIB] = 0
+
+    return NEXT
+end)
+
+EOF_WORD = defPrimWord("\x04", () -> begin
+    if reg.source == STDIN
+        return 0
+    else
+        close(reg.source)
+        reg.source = STDIN
+        return NEXT
+    end
+end, flags=F_IMMED)
+
 # Odds and Ends
 
 CHAR = defPrimWord("CHAR", () -> begin
@@ -896,23 +924,6 @@ CHAR = defPrimWord("CHAR", () -> begin
     wordAddr = popPS()
     word = getString(wordAddr, wordLen)
     pushPS(Int64(word[1]))
-
-    return NEXT
-end)
-
-INCLUDE = defPrimWord("INCLUDE", () -> begin
-
-    callPrim(mem[WORD])
-    wordLen = popPS()
-    wordAddr = popPS()
-    word = getString(wordAddr, wordLen)
-
-    println("Reading from $word...")
-
-    reg.source = open(word, "r")
-
-    # Clear input buffer
-    mem[NUMTIB] = 0
 
     return NEXT
 end)
