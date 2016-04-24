@@ -26,8 +26,8 @@ size_TIB = 1096  # Terminal input buffer size
 # the dictionary.
 #
 # Simple linear addressing is used with one exception: references to primitive code
-# blocks, which are represented as anonymous functions, appear the negative index
-# into the primitives array which contains only these functions.
+# blocks, which are represented as anonymous functions, appear as negative indicies
+# into the primitives array which contains these functions.
 
 mem = Array{Int64,1}(size_mem)
 primitives = Array{Function,1}()
@@ -55,10 +55,12 @@ type Reg
     PSP::Int64  # Parameter/data stack pointer
     IP::Int64   # Instruction pointer
     W::Int64    # Working register
-end
-reg = Reg(mem[RSP0], mem[PSP0], 0, 0)
 
-# Stack manipulation
+    source::Any # Input stream in use
+end
+reg = Reg(mem[RSP0], mem[PSP0], 0, 0, STDIN)
+
+# Stack manipulation functions
 
 type StackUnderflow <: Exception end
 
@@ -560,7 +562,12 @@ TOIN, TOIN_CFA = defNewVar(">IN", 0)
 KEY = defPrimWord("KEY", () -> begin
     if mem[TOIN] >= mem[NUMTIB]
         mem[TOIN] = 0
-        line = readline()
+
+        if reg.source != STDIN && eof(reg.source)
+            reg.source = STDIN
+        end
+
+        line = readline(reg.source)
         mem[NUMTIB] = length(line)
         putString(line, TIB)
     end
@@ -870,6 +877,10 @@ QUIT = defWord("QUIT",
     INTERPRET,
     BRANCH,-2])
 
+BYE = defPrimWord("BYE", () -> begin
+    return 0
+end)
+
 NL = defPrimWord("\n", () -> begin
     if mem[STATE] == 0
         println(" ok")
@@ -889,12 +900,25 @@ CHAR = defPrimWord("CHAR", () -> begin
     return NEXT
 end)
 
-BYE = defPrimWord("BYE", () -> begin
-    return 0
+INCLUDE = defPrimWord("INCLUDE", () -> begin
+
+    callPrim(mem[WORD])
+    wordLen = popPS()
+    wordAddr = popPS()
+    word = getString(wordAddr, wordLen)
+
+    println("Reading from $word...")
+
+    reg.source = open(word, "r")
+
+    # Clear input buffer
+    mem[NUMTIB] = 0
+
+    return NEXT
 end)
 
 #### VM loop ####
-function runVM()
+function run()
     # Start with IP pointing to first instruction of outer interpreter
     reg.IP = QUIT + 1
 
