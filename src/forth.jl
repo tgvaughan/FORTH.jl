@@ -55,10 +55,8 @@ type Reg
     PSP::Int64  # Parameter/data stack pointer
     IP::Int64   # Instruction pointer
     W::Int64    # Working register
-
-    source::Any # Input stream in use
 end
-reg = Reg(mem[RSP0], mem[PSP0], 0, 0, STDIN)
+reg = Reg(mem[RSP0], mem[PSP0], 0, 0)
 
 # Stack manipulation functions
 
@@ -556,6 +554,9 @@ end)
 
 # I/O
 
+sources = Array{Any,1}()
+currentSource() = sources[length(sources)]
+
 defConst("TIB", TIB)
 NUMTIB, NUMTIB_CFA = defNewVar("#TIB", 0)
 TOIN, TOIN_CFA = defNewVar(">IN", 0)
@@ -565,8 +566,8 @@ KEY = defPrimWord("KEY", () -> begin
     if mem[TOIN] >= mem[NUMTIB]
         mem[TOIN] = 0
 
-        if !eof(reg.source)
-            line = readline(reg.source)
+        if !eof(currentSource())
+            line = readline(currentSource())
             mem[NUMTIB] = length(line)
             putString(line, TIB)
         else
@@ -713,6 +714,23 @@ end)
 
 TODFA = defWord(">DFA", [TOCFA, INCR, EXIT])
 
+# Branching
+
+BRANCH = defPrimWord("BRANCH", () -> begin
+    reg.IP += mem[reg.IP]
+    return NEXT
+end)
+
+ZBRANCH = defPrimWord("0BRANCH", () -> begin
+    if (popPS() == 0)
+        reg.IP += mem[reg.IP]
+    else
+        reg.IP += 1
+    end
+
+    return NEXT
+end)
+
 # Compilation
 
 CREATE = defPrimWord("CREATE", () -> begin
@@ -775,24 +793,10 @@ IMMEDIATE = defPrimWord("IMMEDIATE", () -> begin
     return NEXT
 end, flags=F_IMMED)
 
-TICK = defWord("'", [WORD, FIND, TOCFA, EXIT])
-
-# Branching
-
-BRANCH = defPrimWord("BRANCH", () -> begin
-    reg.IP += mem[reg.IP]
-    return NEXT
-end)
-
-ZBRANCH = defPrimWord("0BRANCH", () -> begin
-    if (popPS() == 0)
-        reg.IP += mem[reg.IP]
-    else
-        reg.IP += 1
-    end
-
-    return NEXT
-end)
+TICK = defWord("'",
+    [STATE_CFA, FETCH, ZBRANCH, 7,
+    FROMR, DUP, INCR, TOR, FETCH, EXIT,
+    WORD, FIND, TOCFA, EXIT])
 
 # Strings
 
@@ -845,7 +849,6 @@ INTERPRET = defPrimWord("INTERPRET", () -> begin
 
         if mem[STATE] == 0 || isImmediate
             # Execute!
-            #println("Executing CFA at $(mem[reg.PSP])")
             return callPrim(mem[EXECUTE])
         else
             # Append CFA to dictionary
@@ -886,20 +889,19 @@ BYE = defPrimWord("BYE", () -> begin
 end)
 
 NL = defPrimWord("\n", () -> begin
-    if mem[STATE] == 0 && reg.source == STDIN
+    if mem[STATE] == 0 && currentSource() == STDIN
         println(" ok")
     end
     return NEXT
 end, flags=F_IMMED)
 
 INCLUDE = defPrimWord("INCLUDE", () -> begin
-
     callPrim(mem[WORD])
     wordLen = popPS()
     wordAddr = popPS()
     word = getString(wordAddr, wordLen)
 
-    reg.source = open(word, "r")
+    push!(sources, open(word, "r"))
 
     # Clear input buffer
     mem[NUMTIB] = 0
@@ -908,12 +910,16 @@ INCLUDE = defPrimWord("INCLUDE", () -> begin
 end)
 
 EOF_WORD = defPrimWord("\x04", () -> begin
-    if reg.source == STDIN
-        return 0
-    else
-        close(reg.source)
-        reg.source = STDIN
+    if currentSource() != STDIN
+        close(currentSource())
+    end
+
+    pop!(sources)
+
+    if length(sources)>0
         return NEXT
+    else
+        return 0
     end
 end, flags=F_IMMED)
 
@@ -931,6 +937,9 @@ end)
 
 #### VM loop ####
 function run()
+    # Begin with STDIN as source
+    push!(sources, STDIN)
+
     # Start with IP pointing to first instruction of outer interpreter
     reg.IP = QUIT + 1
 
@@ -939,7 +948,7 @@ function run()
     jmp = NEXT
     while jmp != 0
         try
-            #println("Evaluating prim $jmp $(primNames[-jmp])")
+            #println("Evaluating prim ", jmp," ", primNames[-jmp])
             jmp = callPrim(jmp)
 
         catch ex
@@ -949,6 +958,8 @@ function run()
                 mem[NUMTIB] = 0
                 reg.IP = QUIT + 1
                 jmp = NEXT
+            else
+                rethrow(ex)
             end
         end
     end
