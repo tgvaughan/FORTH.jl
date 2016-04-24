@@ -13,10 +13,7 @@
 : FALSE 0 ;
 : NOT 0= ;
 
-: LITERAL IMMEDIATE
-    ' LIT ,
-    ,
-    ;
+: LITERAL IMMEDIATE ' LIT , , ;
 
-\ : ':' [ CHAR : ] LITERAL ;
+: ':' [ CHAR : ] ;
 

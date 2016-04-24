@@ -114,7 +114,7 @@ end
 
 function defPrim(f::Function; name="nameless")
     push!(primitives, f)
-    push!(primNames, name)
+    push!(primNames, replace(replace(name, "\004", "EOF"), "\n", "\\n"))
 
     return -length(primitives)
 end
@@ -228,6 +228,7 @@ SWAP = defPrimWord("SWAP", () -> begin
 end)
 
 DUP = defPrimWord("DUP", () -> begin
+    ensurePSDepth(1)
     pushPS(mem[reg.PSP])
     return NEXT
 end)
@@ -825,7 +826,7 @@ INTERPRET = defPrimWord("INTERPRET", () -> begin
     callPrim(mem[WORD])
 
     wordName = getString(mem[reg.PSP-1], mem[reg.PSP])
-    #println("... ", replace(wordName, "\n", "\\n"), " ...")
+    #println("... ", replace(replace(wordName, "\004", "EOF"), "\n", "\\n"), " ...")
 
     callPrim(mem[TWODUP])
     callPrim(mem[FIND])
@@ -936,8 +937,20 @@ function run()
     # Primitive processing loop.
     # Everyting else is simply a consequence of this loop!
     jmp = NEXT
-    while (jmp = callPrim(jmp)) != 0
-        #println("Evaluating prim $jmp [$(primNames[-jmp])]")
+    while jmp != 0
+        try
+            #println("Evaluating prim $jmp $(primNames[-jmp])")
+            jmp = callPrim(jmp)
+
+        catch ex
+            if isa(ex, StackUnderflow)
+                println("Stack underflow!")
+
+                mem[NUMTIB] = 0
+                reg.IP = QUIT + 1
+                jmp = NEXT
+            end
+        end
     end
 end
 
