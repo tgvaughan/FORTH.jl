@@ -1033,10 +1033,10 @@ DOT = defPrimWord(".", () -> begin
     return NEXT
 end)
 
-DOTS = defPrimWord(".s", () -> begin
-    printPS()
-    return NEXT
-end)
+#DOTS = defPrimWord(".s", () -> begin
+#    printPS()
+#    return NEXT
+#end)
 
 DUMP = defPrimWord("DUMP", () -> begin
     count = popPS()
