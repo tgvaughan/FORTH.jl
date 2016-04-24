@@ -882,7 +882,7 @@ BYE = defPrimWord("BYE", () -> begin
 end)
 
 NL = defPrimWord("\n", () -> begin
-    if mem[STATE] == 0
+    if mem[STATE] == 0 && reg.source == STDIN
         println(" ok")
     end
     return NEXT
