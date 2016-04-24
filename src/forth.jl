@@ -55,9 +55,8 @@ type Reg
     PSP::Int64  # Parameter/data stack pointer
     IP::Int64   # Instruction pointer
     W::Int64    # Working register
-    X::Int64    # Extra register
 end
-reg = Reg(mem[RSP0], mem[PSP0], 0, 0, 0)
+reg = Reg(mem[RSP0], mem[PSP0], 0, 0)
 
 # Stack manipulation
 
@@ -111,6 +110,17 @@ end
 
 # Primitive creation and calling functions
 
+function defPrim(f::Function; name="nameless")
+    push!(primitives, f)
+    push!(primNames, name)
+
+    return -length(primitives)
+end
+
+callPrim(addr::Int64) = primitives[-addr]()
+
+# Word creation
+
 function createHeader(name::AbstractString, flags::Int64)
     mem[mem[HERE]] = mem[LATEST]
     mem[LATEST] = mem[HERE]
@@ -120,58 +130,21 @@ function createHeader(name::AbstractString, flags::Int64)
     putString(name, mem[HERE]); mem[HERE] += length(name)
 end
 
-function defPrim(name::AbstractString, f::Function; flags::Int64=0)
+function defPrimWord(name::AbstractString, f::Function; flags::Int64=0)
     createHeader(name, flags)
 
     codeWordAddr = mem[HERE]
-    push!(primitives, f)
-    mem[codeWordAddr] = -length(primitives)
+    mem[codeWordAddr] = defPrim(f, name=name)
     mem[HERE] += 1
 
-    push!(primNames, name)
-
     return codeWordAddr
-end
-
-callPrim(addr::Int64) = primitives[-addr]()
-
-function defExistingVar(name::AbstractString, varAddr::Int64; flags::Int64=0)
-    defPrim(name, eval(:(() -> begin
-        pushPS($(varAddr))
-        return mem[NEXT]
-    end)))
-end
-
-function defNewVar(name::AbstractString, initial::Int64; flags::Int64=0)
-    createHeader(name, flags)
-    
-    codeWordAddr = mem[HERE]
-    varAddr = mem[HERE] + 1
-    push!(primitives, eval(:(() -> begin
-        pushPS($(varAddr))
-        return mem[NEXT]
-    end)))
-    mem[mem[HERE]] = -length(primitives); mem[HERE] += 1
-
-    mem[mem[HERE]] = initial; mem[HERE] += 1
-
-    return varAddr, codeWordAddr
-end
-
-function defConst(name::AbstractString, val::Int64; flags::Int64=0)
-    defPrim(name, eval(:(() -> begin
-        pushPS($(val))
-        return mem[NEXT]
-    end)))
-
-    return val
 end
 
 function defWord(name::AbstractString, wordAddrs::Array{Int64,1}; flags::Int64=0)
     createHeader(name, flags)
 
     addr = mem[HERE]
-    mem[mem[HERE]] = mem[DOCOL]
+    mem[mem[HERE]] = DOCOL
     mem[HERE] += 1
 
     for wordAddr in wordAddrs
@@ -182,87 +155,123 @@ function defWord(name::AbstractString, wordAddrs::Array{Int64,1}; flags::Int64=0
     return addr
 end
 
+# Variable creation
+
+function defExistingVar(name::AbstractString, varAddr::Int64; flags::Int64=0)
+
+    defPrimWord(name, eval(:(() -> begin
+        pushPS($(varAddr))
+        return NEXT
+    end)))
+end
+
+function defNewVar(name::AbstractString, initial::Int64; flags::Int64=0)
+    createHeader(name, flags)
+    
+    codeWordAddr = mem[HERE]
+    varAddr = mem[HERE] + 1
+
+    f = eval(:(() -> begin
+        pushPS($(varAddr))
+        return NEXT
+    end))
+
+    mem[mem[HERE]] = defPrim(f, name=name); mem[HERE] += 1
+    mem[mem[HERE]] = initial; mem[HERE] += 1
+
+    return varAddr, codeWordAddr
+end
+
+function defConst(name::AbstractString, val::Int64; flags::Int64=0)
+    defPrimWord(name, eval(:(() -> begin
+        pushPS($(val))
+        return NEXT
+    end)))
+
+    return val
+end
+
 # Threading Primitives (inner interpreter)
 
-NEXT = defPrim("NEXT", () -> begin
+NEXT = defPrim(() -> begin
     reg.W = mem[reg.IP]
     reg.IP += 1
     return mem[reg.W]
-end)
+end, name="NEXT")
 
-DOCOL = defPrim("DOCOL", () -> begin
+DOCOL = defPrim(() -> begin
     pushRS(reg.IP)
     reg.IP = reg.W + 1
-    return mem[NEXT]
-end)
+    return NEXT
+end, name="DOCOL")
 
-EXIT = defPrim("EXIT", () -> begin
+EXIT = defPrimWord("EXIT", () -> begin
     reg.IP = popRS()
-    return mem[NEXT]
+    return NEXT
 end)
 
 # Basic forth primitives
 
-DROP = defPrim("DROP", () -> begin
+DROP = defPrimWord("DROP", () -> begin
     popPS()
-    return mem[NEXT]
+    return NEXT
 end)
 
-SWAP = defPrim("SWAP", () -> begin
+SWAP = defPrimWord("SWAP", () -> begin
     a = popPS()
     b = popPS()
     pushPS(a)
     pushPS(b)
-    return mem[NEXT]
+    return NEXT
 end)
 
-DUP = defPrim("DUP", () -> begin
+DUP = defPrimWord("DUP", () -> begin
     pushPS(mem[reg.PSP])
-    return mem[NEXT]
+    return NEXT
 end)
 
-OVER = defPrim("OVER", () -> begin
+OVER = defPrimWord("OVER", () -> begin
     ensurePSDepth(2)
     pushPS(mem[reg.PSP-1])
-    return mem[NEXT]
+    return NEXT
 end)
 
-ROT = defPrim("ROT", () -> begin
+ROT = defPrimWord("ROT", () -> begin
     a = popPS()
     b = popPS()
     c = popPS()
     pushPS(a)
     pushPS(c)
     pushPS(b)
-    return mem[NEXT]
+    return NEXT
 end)
 
-NROT = defPrim("-ROT", () -> begin
+NROT = defPrimWord("-ROT", () -> begin
     a = popPS()
     b = popPS()
     c = popPS()
     pushPS(b)
     pushPS(a)
     pushPS(c)
-    return mem[NEXT]
+    return NEXT
 end)
 
-TWODROP = defPrim("2DROP", () -> begin
+TWODROP = defPrimWord("2DROP", () -> begin
     popPS()
     popPS()
-    return mem[NEXT]
+    return NEXT
 end)
 
-TWODUP = defPrim("2DUP", () -> begin
+TWODUP = defPrimWord("2DUP", () -> begin
     ensurePSDepth(2)
     a = mem[reg.PSP-1]
     b = mem[reg.PSP]
     pushPS(a)
     pushPS(b)
-    return mem[NEXT]
+    return NEXT
 end)
 
-TWOSWAP = defPrim("2SWAP", () -> begin
+TWOSWAP = defPrimWord("2SWAP", () -> begin
     a = popPS()
     b = popPS()
     c = popPS()
@@ -271,205 +280,205 @@ TWOSWAP = defPrim("2SWAP", () -> begin
     pushPS(a)
     pushPS(c)
     pushPS(d)
-    return mem[NEXT]
+    return NEXT
 end)
 
-QDUP = defPrim("?DUP", () -> begin
+QDUP = defPrimWord("?DUP", () -> begin
     ensurePSDepth(1)
     val = mem[reg.PSP]
     if val != 0
         pushPS(val)
     end
-    return mem[NEXT]
+    return NEXT
 end)
 
-INCR = defPrim("1+", () -> begin
+INCR = defPrimWord("1+", () -> begin
     ensurePSDepth(1)
     mem[reg.PSP] += 1
-    return mem[NEXT]
+    return NEXT
 end)
 
-DECR = defPrim("1-", () -> begin
+DECR = defPrimWord("1-", () -> begin
     ensurePSDepth(1)
     mem[reg.PSP] -= 1
-    return mem[NEXT]
+    return NEXT
 end)
 
-INCR2 = defPrim("2+", () -> begin
+INCR2 = defPrimWord("2+", () -> begin
     ensurePSDepth(1)
     mem[reg.PSP] += 2
-    return mem[NEXT]
+    return NEXT
 end)
 
-DECR2 = defPrim("2-", () -> begin
+DECR2 = defPrimWord("2-", () -> begin
     ensurePSDepth(1)
     mem[reg.PSP] -= 2
-    return mem[NEXT]
+    return NEXT
 end)
 
-ADD = defPrim("+", () -> begin
+ADD = defPrimWord("+", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a+b)
-    return mem[NEXT]
+    return NEXT
 end)
 
-SUB = defPrim("-", () -> begin
+SUB = defPrimWord("-", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a-b)
-    return mem[NEXT]
+    return NEXT
 end)
 
-MUL = defPrim("*", () -> begin
+MUL = defPrimWord("*", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a*b)
-    return mem[NEXT]
+    return NEXT
 end)
 
-DIVMOD = defPrim("/MOD", () -> begin
+DIVMOD = defPrimWord("/MOD", () -> begin
     b = popPS()
     a = popPS()
     q,r = divrem(a,b)
     pushPS(r)
     pushPS(q)
-    return mem[NEXT]
+    return NEXT
 end)
 
-EQU = defPrim("=", () -> begin
+EQU = defPrimWord("=", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a==b ? -1 : 0)
-    return mem[NEXT]
+    return NEXT
 end)
 
-NEQU = defPrim("<>", () -> begin
+NEQU = defPrimWord("<>", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a!=b ? -1 : 0)
-    return mem[NEXT]
+    return NEXT
 end)
 
-LT = defPrim("<", () -> begin
+LT = defPrimWord("<", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a<b ? -1 : 0)
-    return mem[NEXT]
+    return NEXT
 end)
 
-GT = defPrim(">", () -> begin
+GT = defPrimWord(">", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a>b ? -1 : 0)
-    return mem[NEXT]
+    return NEXT
 end)
 
-LE = defPrim("<=", () -> begin
+LE = defPrimWord("<=", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a<=b ? -1 : 0)
-    return mem[NEXT]
+    return NEXT
 end)
 
-GE = defPrim(">=", () -> begin
+GE = defPrimWord(">=", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a>=b ? -1 : 0)
-    return mem[NEXT]
+    return NEXT
 end)
 
-ZEQU = defPrim("0=", () -> begin
+ZEQU = defPrimWord("0=", () -> begin
     pushPS(popPS() == 0 ? -1 : 0)
-    return mem[NEXT]
+    return NEXT
 end)
 
-ZNEQU = defPrim("0<>", () -> begin
+ZNEQU = defPrimWord("0<>", () -> begin
     pushPS(popPS() != 0 ? -1 : 0)
-    return mem[NEXT]
+    return NEXT
 end)
 
-ZLT = defPrim("0<", () -> begin
+ZLT = defPrimWord("0<", () -> begin
     pushPS(popPS() < 0 ? -1 : 0)
-    return mem[NEXT]
+    return NEXT
 end)
 
-ZGT = defPrim("0>", () -> begin
+ZGT = defPrimWord("0>", () -> begin
     pushPS(popPS() > 0 ? -1 : 0)
-    return mem[NEXT]
+    return NEXT
 end)
 
-ZLE = defPrim("0<=", () -> begin
+ZLE = defPrimWord("0<=", () -> begin
     pushPS(popPS() <= 0 ? -1 : 0)
-    return mem[NEXT]
+    return NEXT
 end)
 
-ZGE = defPrim("0>=", () -> begin
+ZGE = defPrimWord("0>=", () -> begin
     pushPS(popPS() >= 0 ? -1 : 0)
-    return mem[NEXT]
+    return NEXT
 end)
 
-AND = defPrim("AND", () -> begin
+AND = defPrimWord("AND", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a & b)
-    return mem[NEXT]
+    return NEXT
 end)
 
-OR = defPrim("OR", () -> begin
+OR = defPrimWord("OR", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a | b)
-    return mem[NEXT]
+    return NEXT
 end)
 
-XOR = defPrim("XOR", () -> begin
+XOR = defPrimWord("XOR", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a $ b)
-    return mem[NEXT]
+    return NEXT
 end)
 
-INVERT = defPrim("INVERT", () -> begin
+INVERT = defPrimWord("INVERT", () -> begin
     pushPS(~popPS())
-    return mem[NEXT]
+    return NEXT
 end)
 
 # Literals
 
-LIT = defPrim("LIT", () -> begin
+LIT = defPrimWord("LIT", () -> begin
     pushPS(mem[reg.IP])
     reg.IP += 1
-    return mem[NEXT]
+    return NEXT
 end)
 
 # Memory primitives
 
-STORE = defPrim("!", () -> begin
+STORE = defPrimWord("!", () -> begin
     addr = popPS()
     dat = popPS()
     mem[addr] = dat
-    return mem[NEXT]
+    return NEXT
 end)
 
-FETCH = defPrim("@", () -> begin
+FETCH = defPrimWord("@", () -> begin
     addr = popPS()
     pushPS(mem[addr])
-    return mem[NEXT]
+    return NEXT
 end)
 
-ADDSTORE = defPrim("+!", () -> begin
+ADDSTORE = defPrimWord("+!", () -> begin
     addr = popPS()
     toAdd = popPS()
     mem[addr] += toAdd
-    return mem[NEXT]
+    return NEXT
 end)
 
-SUBSTORE = defPrim("-!", () -> begin
+SUBSTORE = defPrimWord("-!", () -> begin
     addr = popPS()
     toSub = popPS()
     mem[addr] -= toSub
-    return mem[NEXT]
+    return NEXT
 end)
 
 
@@ -493,41 +502,53 @@ F_LENMASK = defConst("F_LENMASK", 127)
 
 # Return Stack
 
-TOR = defPrim(">R", () -> begin
+TOR = defPrimWord(">R", () -> begin
     pushRS(popPS())
-    return mem[NEXT]
+    return NEXT
 end)
 
-FROMR = defPrim("R>", () -> begin
+FROMR = defPrimWord("R>", () -> begin
     pushPS(popRS())
-    return mem[NEXT]
+    return NEXT
 end)
 
-RSPFETCH = defPrim("RSP@", () -> begin
+RSPFETCH = defPrimWord("RSP@", () -> begin
     pushPS(reg.RSP)
-    return mem[NEXT]
+    return NEXT
 end)
 
-RSPSTORE = defPrim("RSP!", () -> begin
+RSPSTORE = defPrimWord("RSP!", () -> begin
     RSP = popPS()
-    return mem[NEXT]
+    return NEXT
 end)
 
-RDROP = defPrim("RDROP", () -> begin
+RDROP = defPrimWord("RDROP", () -> begin
     popRS()
-    return mem[NEXT]
+    return NEXT
 end)
 
 # Parameter Stack
 
-PSPFETCH = defPrim("PSP@", () -> begin
+PSPFETCH = defPrimWord("PSP@", () -> begin
     pushPS(reg.PSP)
-    return mem[NEXT]
+    return NEXT
 end)
 
-PSPSTORE = defPrim("PSP!", () -> begin
+PSPSTORE = defPrimWord("PSP!", () -> begin
     PSP = popPS()
-    return mem[NEXT]
+    return NEXT
+end)
+
+# Working Register
+
+WFETCH = defPrimWord("W@", () -> begin
+    pushPS(reg.W)
+    return NEXT
+end)
+
+WSTORE = defPrimWord("W!", () -> begin
+    reg.W = popPS()
+    return NEXT
 end)
 
 # I/O
@@ -536,7 +557,7 @@ defConst("TIB", TIB)
 NUMTIB, NUMTIB_CFA = defNewVar("#TIB", 0)
 TOIN, TOIN_CFA = defNewVar(">IN", 0)
 
-KEY = defPrim("KEY", () -> begin
+KEY = defPrimWord("KEY", () -> begin
     if mem[TOIN] >= mem[NUMTIB]
         mem[TOIN] = 0
         line = readline()
@@ -547,15 +568,15 @@ KEY = defPrim("KEY", () -> begin
     pushPS(mem[TIB + mem[TOIN]])
     mem[TOIN] += 1
 
-    return mem[NEXT]
+    return NEXT
 end)
 
-EMIT = defPrim("EMIT", () -> begin
+EMIT = defPrimWord("EMIT", () -> begin
     print(Char(popPS()))
-    return mem[NEXT]
+    return NEXT
 end)
 
-WORD = defPrim("WORD", () -> begin
+WORD = defPrimWord("WORD", () -> begin
     
     c = -1
 
@@ -593,7 +614,7 @@ WORD = defPrim("WORD", () -> begin
         mem[wordAddr + offset] = Int64(c)
         pushPS(wordAddr)
         pushPS(1)
-        return mem[NEXT]
+        return NEXT
     end
 
     while true
@@ -615,10 +636,10 @@ WORD = defPrim("WORD", () -> begin
     pushPS(wordAddr)
     pushPS(wordLen)
 
-    return mem[NEXT]
+    return NEXT
 end)
 
-NUMBER = defPrim("NUMBER", () -> begin
+NUMBER = defPrimWord("NUMBER", () -> begin
 
     wordLen = popPS()
     wordAddr = popPS()
@@ -632,12 +653,12 @@ NUMBER = defPrim("NUMBER", () -> begin
         pushPS(1) # Error indication
     end
 
-    return mem[NEXT]
+    return NEXT
 end)
 
 # Dictionary searches
 
-FIND = defPrim("FIND", () -> begin
+FIND = defPrimWord("FIND", () -> begin
 
     wordLen = popPS()
     wordAddr = popPS()
@@ -665,10 +686,10 @@ FIND = defPrim("FIND", () -> begin
 
     pushPS(latest)
 
-    return mem[NEXT]
+    return NEXT
 end)
 
-TOCFA = defPrim(">CFA", () -> begin
+TOCFA = defPrimWord(">CFA", () -> begin
 
     addr = popPS()
     lenAndFlags = mem[addr+1]
@@ -676,14 +697,14 @@ TOCFA = defPrim(">CFA", () -> begin
 
     pushPS(addr + 2 + len)
 
-    return mem[NEXT]
+    return NEXT
 end)
 
 TODFA = defWord(">DFA", [TOCFA, INCR, EXIT])
 
 # Compilation
 
-CREATE = defPrim("CREATE", () -> begin
+CREATE = defPrimWord("CREATE", () -> begin
 
     wordLen = popPS()
     wordAddr = popPS()
@@ -691,30 +712,30 @@ CREATE = defPrim("CREATE", () -> begin
 
     createHeader(word, 0)
 
-    return mem[NEXT]
+    return NEXT
 end)
 
-COMMA = defPrim(",", () -> begin
+COMMA = defPrimWord(",", () -> begin
     mem[mem[HERE]] = popPS()
     mem[HERE] += 1
 
-    return mem[NEXT]
+    return NEXT
 end)
 
-LBRAC = defPrim("[", () -> begin
+LBRAC = defPrimWord("[", () -> begin
     mem[STATE] = 0
-    return mem[NEXT]
+    return NEXT
 end, flags=F_IMMED)
 
-RBRAC = defPrim("]", () -> begin
+RBRAC = defPrimWord("]", () -> begin
     mem[STATE] = 1
-    return mem[NEXT]
+    return NEXT
 end, flags=F_IMMED)
 
-HIDDEN = defPrim("HIDDEN", () -> begin
+HIDDEN = defPrimWord("HIDDEN", () -> begin
     addr = popPS() + 1
     mem[addr] = mem[addr] $ F_HIDDEN
-    return mem[NEXT]
+    return NEXT
 end)
 
 HIDE = defWord("HIDE",
@@ -727,75 +748,79 @@ COLON = defWord(":",
     [WORD,
     CREATE,
     LIT, DOCOL, COMMA,
-    LATEST, FETCH, HIDDEN,
+    LATEST_CFA, FETCH, HIDDEN,
     RBRAC,
     EXIT])
 
 SEMICOLON = defWord(";",
     [LIT, EXIT, COMMA,
-    LATEST, FETCH, HIDDEN,
+    LATEST_CFA, FETCH, HIDDEN,
     LBRAC,
     EXIT], flags=F_IMMED)
 
-IMMEDIATE = defPrim("IMMEDIATE", () -> begin
+IMMEDIATE = defPrimWord("IMMEDIATE", () -> begin
     lenAndFlagsAddr = mem[LATEST] + 1
     mem[lenAndFlagsAddr] = mem[lenAndFlagsAddr] $ F_IMMED
-    return mem[NEXT]
+    return NEXT
 end, flags=F_IMMED)
 
 TICK = defWord("'", [WORD, FIND, TOCFA, EXIT])
 
 # Branching
 
-BRANCH = defPrim("BRANCH", () -> begin
+BRANCH = defPrimWord("BRANCH", () -> begin
     reg.IP += mem[reg.IP]
-    return mem[NEXT]
+    return NEXT
 end)
 
-ZBRANCH = defPrim("0BRANCH", () -> begin
+ZBRANCH = defPrimWord("0BRANCH", () -> begin
     if (popPS() == 0)
         reg.IP += mem[reg.IP]
     else
         reg.IP += 1
     end
 
-    return mem[NEXT]
+    return NEXT
 end)
 
 # Strings
 
-LITSTRING = defPrim("LITSTRING", () -> begin
+LITSTRING = defPrimWord("LITSTRING", () -> begin
     len = mem[reg.IP]
     reg.IP += 1
     pushPS(reg.IP)
     pushPS(len)
     reg.IP += len
 
-    return mem[NEXT]
+    return NEXT
 end)
 
-TELL = defPrim("TELL", () -> begin
+TELL = defPrimWord("TELL", () -> begin
     len = popPS()
     addr = popPS()
     str = getString(addr, len)
     print(str)
-    return mem[NEXT]
+    return NEXT
 end)
 
 # Outer interpreter
 
-INTERPRET = defPrim("INTERPRET", () -> begin
+EXECUTE = defPrimWord("EXECUTE", () -> begin
+    reg.W = popPS()
+    return mem[reg.W]
+end)
+
+INTERPRET = defPrimWord("INTERPRET", () -> begin
 
     callPrim(mem[WORD])
 
     wordName = getString(mem[reg.PSP-1], mem[reg.PSP])
-    println("... ", replace(wordName, "\n", "\\n"), " ...")
+    #println("... ", replace(wordName, "\n", "\\n"), " ...")
 
     callPrim(mem[TWODUP])
     callPrim(mem[FIND])
 
     wordAddr = mem[reg.PSP]
-
 
     if wordAddr>0
         # Word in dictionary
@@ -809,7 +834,8 @@ INTERPRET = defPrim("INTERPRET", () -> begin
 
         if mem[STATE] == 0 || isImmediate
             # Execute!
-            return mem[popPS()]
+            #println("Executing CFA at $(mem[reg.PSP])")
+            return callPrim(mem[EXECUTE])
         else
             # Append CFA to dictionary
             callPrim(mem[COMMA])
@@ -823,8 +849,7 @@ INTERPRET = defPrim("INTERPRET", () -> begin
 
         if popPS() != 0
             println("Parse error at word: '$wordName'")
-            return mem[NEXT]
-        else
+            return NEXT
         end
 
         if mem[STATE] == 0
@@ -837,7 +862,7 @@ INTERPRET = defPrim("INTERPRET", () -> begin
         end
     end
 
-    return mem[NEXT]
+    return NEXT
 end)
 
 QUIT = defWord("QUIT",
@@ -845,30 +870,26 @@ QUIT = defWord("QUIT",
     INTERPRET,
     BRANCH,-2])
 
-NL = defPrim("\n", () -> begin
+NL = defPrimWord("\n", () -> begin
     if mem[STATE] == 0
         println(" ok")
     end
-    return mem[NEXT]
-end)
+    return NEXT
+end, flags=F_IMMED)
 
 # Odds and Ends
 
-CHAR = defPrim("CHAR", () -> begin
+CHAR = defPrimWord("CHAR", () -> begin
     callPrim(mem[WORD])
     wordLen = popPS()
     wordAddr = popPS()
     word = getString(wordAddr, wordLen)
     pushPS(Int64(word[1]))
 
-    return mem[NEXT]
+    return NEXT
 end)
 
-EXECUTE = defPrim("EXECUTE", () -> begin
-    return mem[popPS()]
-end)
-
-BYE = defPrim("BYE", () -> begin
+BYE = defPrimWord("BYE", () -> begin
     return 0
 end)
 
@@ -879,9 +900,9 @@ function runVM()
 
     # Primitive processing loop.
     # Everyting else is simply a consequence of this loop!
-    jmp = mem[NEXT]
+    jmp = NEXT
     while (jmp = callPrim(jmp)) != 0
-        println("Evaluating prim $jmp [$(primNames[-jmp])]")
+        #println("Evaluating prim $jmp [$(primNames[-jmp])]")
     end
 end
 
