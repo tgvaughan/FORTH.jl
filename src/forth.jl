@@ -60,20 +60,24 @@ reg = Reg(mem[RSP0], mem[PSP0], 0, 0)
 
 # Stack manipulation functions
 
-type StackUnderflow <: Exception end
+type ParamStackUnderflow <: Exception end
+type ReturnStackUnderflow <: Exception end
+
+Base.showerror(io::IO, ex::ParamStackUnderflow) = print(io, "Parameter stack underflow.")
+Base.showerror(io::IO, ex::ReturnStackUnderflow) = print(io, "Return stack underflow.")
 
 getRSDepth() = reg.RSP - mem[RSP0]
 getPSDepth() = reg.PSP - mem[PSP0]
 
 function ensurePSDepth(depth::Int64)
     if getPSDepth()<depth
-        throw(StackUnderflow())
+        throw(ParamStackUnderflow())
     end
 end
 
 function ensureRSDepth(depth::Int64)
     if getRSDepth()<depth
-        throw(StackUnderflow())
+        throw(ReturnStackUnderflow())
     end
 end
 
@@ -888,9 +892,13 @@ BYE = defPrimWord("BYE", () -> begin
     return 0
 end)
 
+PROMPT = defPrimWord("PROMPT", () -> begin
+    println(" ok")
+end)
+
 NL = defPrimWord("\n", () -> begin
     if mem[STATE] == 0 && currentSource() == STDIN
-        println(" ok")
+        callPrim(mem[PROMPT])
     end
     return NEXT
 end, flags=F_IMMED)
@@ -917,6 +925,10 @@ EOF_WORD = defPrimWord("\x04", () -> begin
     pop!(sources)
 
     if length(sources)>0
+        if currentSource() == STDIN
+            callPrim(mem[PROMPT])
+        end
+
         return NEXT
     else
         return 0
@@ -952,15 +964,12 @@ function run()
             jmp = callPrim(jmp)
 
         catch ex
-            if isa(ex, StackUnderflow)
-                println("Stack underflow!")
+            showerror(STDOUT, ex)
+            println()
 
-                mem[NUMTIB] = 0
-                reg.IP = QUIT + 1
-                jmp = NEXT
-            else
-                rethrow(ex)
-            end
+            mem[NUMTIB] = 0
+            reg.IP = QUIT + 1
+            jmp = NEXT
         end
     end
 end
@@ -1027,16 +1036,6 @@ function printRS()
         println("Return stack empty")
     end
 end
-
-DOT = defPrimWord(".", () -> begin
-    print(popPS())
-    return NEXT
-end)
-
-#DOTS = defPrimWord(".s", () -> begin
-#    printPS()
-#    return NEXT
-#end)
 
 DUMP = defPrimWord("DUMP", () -> begin
     count = popPS()
