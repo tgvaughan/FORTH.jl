@@ -1020,6 +1020,8 @@ function run(;initialize=true)
 
             mem[STATE] = 0
             mem[NUMTIB] = 0
+            reg.PSP = mem[PSP0]
+            reg.RSP = mem[RSP0]
             reg.IP = QUIT + 1
             jmp = NEXT
         end
