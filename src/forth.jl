@@ -844,6 +844,11 @@ EXECUTE = defPrimWord("EXECUTE", () -> begin
     return mem[reg.W]
 end)
 
+type ParseError <: Exception
+    wordName::ASCIIString
+end
+Base.showerror(io::IO, ex::ParseError) = print(io, "Parse error at word: '$(ex.wordName)'.")
+
 INTERPRET = defPrimWord("INTERPRET", () -> begin
 
     callPrim(mem[WORD])
@@ -881,8 +886,7 @@ INTERPRET = defPrimWord("INTERPRET", () -> begin
         callPrim(mem[NUMBER])
 
         if popPS() != 0
-            println("Parse error at word: '$wordName'")
-            return NEXT
+            throw(ParseError(wordName))
         end
 
         if mem[STATE] == 0
@@ -979,7 +983,7 @@ function run(;initialize=true)
     global initialized, initFileName
     if !initialized && initialize
         if initFileName != nothing
-            print("Including definitions from $initFileName.")
+            print("Including definitions from $initFileName...")
             push!(sources, open(initFileName, "r"))
             initialized = true
         else
@@ -1002,6 +1006,11 @@ function run(;initialize=true)
             showerror(STDOUT, ex)
             println()
 
+            while !isempty(sources) && currentSource() != STDIN
+                close(pop!(sources))
+            end
+
+            mem[STATE] = 0
             mem[NUMTIB] = 0
             reg.IP = QUIT + 1
             jmp = NEXT

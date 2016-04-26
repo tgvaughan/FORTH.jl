@@ -2,13 +2,7 @@
 : MOD /MOD DROP ;
 : */ * / ;
 
-: '\n' 10 ;
-: BL 32 ;
-
-: CR '\n' emit ;
-: SPACE BL emit ;
-
-: NEGATE 0 swap - ;
+: NEGATE 0 SWAP - ;
 
 : TRUE -1 ;
 : FALSE 0 ;
@@ -17,6 +11,9 @@
 : CELLS ; \ Allow for slightly more portable code
 
 : DEPTH PSP@ PSP0 @ - ;
+
+: '\n' 10 ;
+: BL 32 ;
 
 : LITERAL IMMEDIATE ' LIT , , ;
 
@@ -31,6 +28,9 @@
 : '0' [ CHAR 0 ] LITERAL ;
 : '-' [ CHAR - ] LITERAL ;
 : '.' [ CHAR . ] LITERAL ;
+
+: CR '\n' emit ;
+: SPACE BL emit ;
 
 : [COMPILE] IMMEDIATE
         WORD            \ get the next word
@@ -170,9 +170,25 @@
 : HEX ( -- ) 16 BASE ! ;
 
 ( Compute absolute value. )
-: ABS           ( n -- m)
+: ABS           ( n -- |n| )
         dup 0< if
                 negate
+        then
+;
+
+: MAX           ( n m -- max )
+        2dup - 0< if
+                swap drop
+        else
+                drop
+        then
+;
+
+: MIN           ( n m -- max )
+        2dup - 0> if
+                swap drop
+        else
+                drop
         then
 ;
 
