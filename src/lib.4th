@@ -116,15 +116,21 @@
 
 : I RSP@ 3 - @ ;
 
-: LEAVE IMMEDIATE
+: LEAVE? IMMEDIATE
+        ' 0BRANCH , 13 ,
         ' R> , ' RDROP , ' RDROP ,
-        ' LIT ,  HERE @ 7 + , ' DUP , ' ROT , ' - , ' SWAP , ' ! ,
+        ' LIT ,  HERE @ 7 + , ' DUP , ' -ROT , ' - , ' SWAP , ' ! ,
         ' BRANCH ,
         0 ,
 ;
 
-: LOOP IMMEDIATE
-        ' R> , ' R> , ' R> , ' 1+ , ' 2DUP , ' - ,
+: LEAVE IMMEDIATE
+        ' LIT , -1 ,
+        [COMPILE] LEAVE?
+;
+
+: LOOP+ IMMEDIATE
+        ' R> , ' SWAP , ' R> , ' SWAP , ' R> , ' SWAP , ' + , ' 2DUP , ' - ,
         ' SWAP , ' >R , ' SWAP , ' >R , ' SWAP , ' >R ,
         ' 0<= , ' 0BRANCH ,
         HERE @ - ,
@@ -132,8 +138,10 @@
         HERE @ SWAP !
 ;
 
-: lt 10 0 do leave loop ;
-
+: LOOP IMMEDIATE
+        ' LIT , 1 ,
+        [COMPILE] LOOP+
+;
 
 \ COMMENTS ----------------------------------------------------------------------
 
@@ -155,7 +163,7 @@
 
 ( Some more complicated stack examples, showing the stack notation. )
 : NIP ( x y -- y ) SWAP DROP ;
-: TUCK ( x y -- y x y ) DUP ROT ;
+: TUCK ( x y -- y x y ) DUP -ROT ;
 : PICK ( x_u ... x_1 x_0 u -- x_u ... x_1 x_0 x_u )
         1+              ( add one because of 'u' on the stack )
         PSP@ SWAP -     ( add to the stack pointer )
@@ -235,7 +243,7 @@
         SWAP            ( width u )
         DUP             ( width u u )
         UWIDTH          ( width u uwidth )
-        -ROT            ( u uwidth width )
+        ROT            ( u uwidth width )
         SWAP -          ( u width-uwidth )
         ( At this point if the requested width is narrower, we'll have a negative number on the stack.
           Otherwise the number on the stack is the number of spaces to print.  But SPACES won't print
@@ -250,18 +258,18 @@
         DUP 0< IF
                 NEGATE          ( width u )
                 1               ( save a flag to remember that it was negative | width n 1 )
-                ROT             ( 1 width u )
+                -ROT             ( 1 width u )
                 SWAP            ( 1 u width )
                 1-              ( 1 u width-1 )
         ELSE
                 0               ( width u 0 )
-                ROT             ( 0 width u )
+                -ROT             ( 0 width u )
                 SWAP            ( 0 u width )
         THEN
         SWAP            ( flag width u )
         DUP             ( flag width u u )
         UWIDTH          ( flag width u uwidth )
-        -ROT            ( flag u uwidth width )
+        ROT            ( flag u uwidth width )
         SWAP -          ( flag u width-uwidth )
 
         SPACES          ( flag u )
@@ -295,7 +303,7 @@
 
 ( c a b WITHIN returns true if a <= c and c < b )
 : WITHIN
-        ROT             ( b c a )
+        -ROT             ( b c a )
         OVER            ( b c a c )
         <= IF
                 > IF            ( b c -- )

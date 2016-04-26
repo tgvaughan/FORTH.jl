@@ -241,7 +241,7 @@ OVER = defPrimWord("OVER", () -> begin
     return NEXT
 end)
 
-NROT = defPrimWord("-ROT", () -> begin
+ROT = defPrimWord("ROT", () -> begin
     a = popPS()
     b = popPS()
     c = popPS()
@@ -251,7 +251,7 @@ NROT = defPrimWord("-ROT", () -> begin
     return NEXT
 end)
 
-ROT = defPrimWord("ROT", () -> begin
+NROT = defPrimWord("-ROT", () -> begin
     a = popPS()
     b = popPS()
     c = popPS()
@@ -872,7 +872,7 @@ INTERPRET = defPrimWord("INTERPRET", () -> begin
         isImmediate = (mem[wordAddr+1] & F_IMMED) != 0
         callPrim(mem[TOCFA])
 
-        callPrim(mem[ROT]) # get rid of extra copy of word string details
+        callPrim(mem[NROT]) # get rid of extra copy of word string details
         popPS()
         popPS()
 
