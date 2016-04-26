@@ -952,10 +952,30 @@ CHAR = defPrimWord("CHAR", () -> begin
     return NEXT
 end)
 
+initialized = false
+initFileName = nothing
+if isfile("lib.4th")
+    initFileName = "lib.4th"
+elseif isfile(Pkg.dir("forth/src/lib.4th"))
+    initFileName = Pkg.dir("forth/src/lib.4th")
+end
+
+
 #### VM loop ####
-function run()
+function run(;initialize=true)
     # Begin with STDIN as source
     push!(sources, STDIN)
+
+    global initialized, initFileName
+    if !initialized && initialize
+        if initFileName != nothing
+            print("Including definitions from $initFileName.")
+            push!(sources, open(initFileName, "r"))
+            initialized = true
+        else
+            println("No library file found. Only primitive words available.")
+        end
+    end
 
     # Start with IP pointing to first instruction of outer interpreter
     reg.IP = QUIT + 1

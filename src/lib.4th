@@ -106,25 +106,18 @@
 ;
 
 : DO IMMEDIATE
-        ' LIT , 
-        HERE @
-        0 ,
-        ' >R , ' >R , ' >R ,
+        ' >R , ' >R ,
         HERE @
 ;
 
 : I RSP@ 2- @ ;
-
-: LEAVE RDROP RDROP RDROP EXIT ;
 
 : LOOP IMMEDIATE
         ' R> , ' R> , ' 1+ , ' 2DUP , ' - ,
         ' SWAP , ' >R , ' SWAP , ' >R ,
         ' 0<= , ' 0BRANCH ,
         HERE @ - ,
-        ' RDROP , ' RDROP , ' RDROP ,
-        DUP HERE @ SWAP -
-        SWAP !
+        ' RDROP , ' RDROP ,
 ;
 
 
