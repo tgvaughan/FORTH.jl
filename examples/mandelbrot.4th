@@ -1,7 +1,7 @@
 ( --- Complex integer arithmetic --- )
 
 : c* ( x1 y1 x2 y2 -- x3 y3 )
-        swap rot                ( x1 x2 y1 y2 )
+        swap -rot               ( x1 x2 y1 y2 )
         2dup * negate           ( x1 x2 y1 y2 -y1y2 )
         4 pick 4 pick * +       ( x1 x2 y1 y2 (x1x2-y1y2))
         4 roll 2 roll *         ( x2 y1 (x1x2-y1y2) x1y2 )
@@ -16,7 +16,7 @@
 
 : csq 2dup c* ;
 
-; cmagsq ( x1 y1 -- mag )
+: cmagsq ( x1 y1 -- mag )
         csq abs
 ;
 
