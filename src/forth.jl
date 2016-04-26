@@ -351,6 +351,16 @@ DIVMOD = defPrimWord("/MOD", () -> begin
     return NEXT
 end)
 
+TWOMUL = defPrimWord("2*", () -> begin
+    pushPS(popPS() << 1)
+    return NEXT
+end)
+
+TWODIV = defPrimWord("2/", () -> begin
+    pushPS(popPS() >> 1)
+    return NEXT
+end)
+
 EQU = defPrimWord("=", () -> begin
     b = popPS()
     a = popPS()
