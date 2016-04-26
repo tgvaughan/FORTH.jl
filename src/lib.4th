@@ -170,16 +170,15 @@
         @               ( and fetch )
 ;
 
+: ROLL ( x_u x_u-1... x_0 u -- x_u-1 ... x_0 x_u )
+        1+ DUP PICK SWAP    ( x_u x_u-1 ... x_0 x_u u+1 )
+;
 
 ( With the looping constructs, we can now write SPACES, which writes n spaces to stdout. )
 : SPACES        ( n -- )
-        BEGIN
-                DUP 0>          ( while n > 0 )
-        WHILE
-                SPACE           ( print a space )
-                1-              ( until we count down to 0 )
-        REPEAT
-        DROP
+        0 DO
+            SPACE
+        LOOP
 ;
 
 ( Standard words for manipulating BASE. )
