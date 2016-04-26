@@ -116,7 +116,7 @@
 
 : I RSP@ 3 - @ ;
 
-: LEAVE? IMMEDIATE
+: ?LEAVE IMMEDIATE
         ' 0BRANCH , 13 ,
         ' R> , ' RDROP , ' RDROP ,
         ' LIT ,  HERE @ 7 + , ' DUP , ' -ROT , ' - , ' SWAP , ' ! ,
@@ -126,10 +126,10 @@
 
 : LEAVE IMMEDIATE
         ' LIT , -1 ,
-        [COMPILE] LEAVE?
+        [COMPILE] ?LEAVE
 ;
 
-: LOOP+ IMMEDIATE
+: +LOOP IMMEDIATE
         ' R> , ' SWAP , ' R> , ' SWAP , ' R> , ' SWAP , ' + , ' 2DUP , ' - ,
         ' SWAP , ' >R , ' SWAP , ' >R , ' SWAP , ' >R ,
         ' 0<= , ' 0BRANCH ,
@@ -140,7 +140,7 @@
 
 : LOOP IMMEDIATE
         ' LIT , 1 ,
-        [COMPILE] LOOP+
+        [COMPILE] +LOOP
 ;
 
 \ COMMENTS ----------------------------------------------------------------------
