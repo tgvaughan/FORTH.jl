@@ -45,6 +45,9 @@
         ,               \ compile it
 ;
 
+: DEBUGON TRUE DEBUG ! ;
+: DEBUGOFF FALSE DEBUG ! ;
+
 \ CONTROL STRUCTURES ----------------------------------------------------------------------
 
 : IF IMMEDIATE
@@ -107,23 +110,29 @@
 
 : DO IMMEDIATE
         ' >R , ' >R ,
+        ' LIT , HERE @ 0 , ' >R ,
         HERE @
 ;
 
-: I RSP@ 2- @ ;
+: I RSP@ 3 - @ ;
 
-: LOOP+ IMMEDIATE
-        ' R> , ' R> , ' -ROT , ' + , ' 2DUP , ' - ,
-        ' SWAP , ' >R , ' SWAP , ' >R ,
-        ' 0<= , ' 0BRANCH ,
-        HERE @ - ,
-        ' RDROP , ' RDROP ,
+: LEAVE IMMEDIATE
+        ' R> , ' RDROP , ' RDROP ,
+        ' LIT ,  HERE @ 7 + , ' DUP , ' ROT , ' - , ' SWAP , ' ! ,
+        ' BRANCH ,
+        0 ,
 ;
 
 : LOOP IMMEDIATE
-    ' LIT , 1 ,
-    [COMPILE] LOOP+
+        ' R> , ' R> , ' R> , ' 1+ , ' 2DUP , ' - ,
+        ' SWAP , ' >R , ' SWAP , ' >R , ' SWAP , ' >R ,
+        ' 0<= , ' 0BRANCH ,
+        HERE @ - ,
+        ' RDROP , ' RDROP , ' RDROP ,
+        HERE @ SWAP !
 ;
+
+: lt 10 0 do leave loop ;
 
 
 \ COMMENTS ----------------------------------------------------------------------

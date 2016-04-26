@@ -241,6 +241,16 @@ OVER = defPrimWord("OVER", () -> begin
     return NEXT
 end)
 
+NROT = defPrimWord("-ROT", () -> begin
+    a = popPS()
+    b = popPS()
+    c = popPS()
+    pushPS(b)
+    pushPS(a)
+    pushPS(c)
+    return NEXT
+end)
+
 ROT = defPrimWord("ROT", () -> begin
     a = popPS()
     b = popPS()
@@ -251,15 +261,6 @@ ROT = defPrimWord("ROT", () -> begin
     return NEXT
 end)
 
-NROT = defPrimWord("-ROT", () -> begin
-    a = popPS()
-    b = popPS()
-    c = popPS()
-    pushPS(b)
-    pushPS(a)
-    pushPS(c)
-    return NEXT
-end)
 
 TWODROP = defPrimWord("2DROP", () -> begin
     popPS()
@@ -849,12 +850,16 @@ type ParseError <: Exception
 end
 Base.showerror(io::IO, ex::ParseError) = print(io, "Parse error at word: '$(ex.wordName)'.")
 
+DEBUG, DEBUG_CFA = defNewVar("DEBUG", 0)
+
 INTERPRET = defPrimWord("INTERPRET", () -> begin
 
     callPrim(mem[WORD])
 
     wordName = getString(mem[reg.PSP-1], mem[reg.PSP])
-    #println("... ", replace(replace(wordName, "\004", "EOF"), "\n", "\\n"), " ...")
+    if mem[DEBUG] != 0
+        println("... ", replace(replace(wordName, "\004", "EOF"), "\n", "\\n"), " ...")
+    end
 
     callPrim(mem[TWODUP])
     callPrim(mem[FIND])
@@ -999,7 +1004,10 @@ function run(;initialize=true)
     jmp = NEXT
     while jmp != 0
         try
-            #println("Evaluating prim ", jmp," ", primNames[-jmp])
+            if mem[DEBUG] != 0
+                println("Evaluating prim ", jmp," ", primNames[-jmp])
+            end
+
             jmp = callPrim(jmp)
 
         catch ex
