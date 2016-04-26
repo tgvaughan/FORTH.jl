@@ -170,10 +170,6 @@
         @               ( and fetch )
 ;
 
-: ROLL ( x_u x_u-1... x_0 u -- x_u-1 ... x_0 x_u )
-        1+ DUP PICK SWAP    ( x_u x_u-1 ... x_0 x_u u+1 )
-;
-
 ( With the looping constructs, we can now write SPACES, which writes n spaces to stdout. )
 : SPACES        ( n -- )
         0 DO
@@ -315,4 +311,14 @@
                 FALSE
         THEN
 ;
+
+: ROLL ( x_u x_u-1... x_0 u -- x_u-1 ... x_0 x_u )
+        1+ DUP PICK SWAP    ( x_u x_u-1 ... x_0 x_u u+1 )
+        PSP@ 1- SWAP - PSP@ 2- SWAP
+        DO
+            i 1+ @ i !
+        LOOP
+        SWAP DROP
+;
+
 
