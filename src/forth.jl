@@ -517,6 +517,11 @@ FROMR = defPrimWord("R>", () -> begin
     return NEXT
 end)
 
+RFETCH = defPrimWord("R@", () -> begin
+    pushPS(mem[reg.RSP])
+    return NEXT
+end)
+
 RSPFETCH = defPrimWord("RSP@", () -> begin
     pushPS(reg.RSP)
     return NEXT

@@ -1,5 +1,6 @@
-' 1+ , : / /MOD SWAP DROP ;
+: / /MOD SWAP DROP ;
 : MOD /MOD DROP ;
+: */ * / ;
 
 : '\n' 10 ;
 : BL 32 ;
@@ -105,16 +106,25 @@
 ;
 
 : DO IMMEDIATE
-        ' >R , ' >R ,
+        ' LIT , 
+        HERE @
+        0 ,
+        ' >R , ' >R , ' >R ,
         HERE @
 ;
+
+: I RSP@ 2- @ ;
+
+: LEAVE RDROP RDROP RDROP EXIT ;
 
 : LOOP IMMEDIATE
         ' R> , ' R> , ' 1+ , ' 2DUP , ' - ,
         ' SWAP , ' >R , ' SWAP , ' >R ,
         ' 0<= , ' 0BRANCH ,
         HERE @ - ,
-        ' RDROP , ' RDROP ,
+        ' RDROP , ' RDROP , ' RDROP ,
+        DUP HERE @ SWAP -
+        SWAP !
 ;
 
 
@@ -144,6 +154,7 @@
         PSP@ SWAP -     ( add to the stack pointer )
         @               ( and fetch )
 ;
+
 
 ( With the looping constructs, we can now write SPACES, which writes n spaces to stdout. )
 : SPACES        ( n -- )
@@ -240,8 +251,6 @@
         U.
 ;
 
-: U. U. SPACE ;
-
 : . 0 .R SPACE ;
 
 : .S            ( -- )
@@ -255,6 +264,8 @@
         REPEAT
         DROP
 ;
+
+: U. U. SPACE ;
 
 ( ? fetches the integer at an address and prints it. )
 : ? ( addr -- ) @ . ;
