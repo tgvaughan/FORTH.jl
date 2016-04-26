@@ -112,12 +112,17 @@
 
 : I RSP@ 2- @ ;
 
-: LOOP IMMEDIATE
-        ' R> , ' R> , ' 1+ , ' 2DUP , ' - ,
+: LOOP+ IMMEDIATE
+        ' R> , ' R> , ' -ROT , ' + , ' 2DUP , ' - ,
         ' SWAP , ' >R , ' SWAP , ' >R ,
         ' 0<= , ' 0BRANCH ,
         HERE @ - ,
         ' RDROP , ' RDROP ,
+;
+
+: LOOP IMMEDIATE
+    ' LIT , 1 ,
+    [COMPILE] LOOP+
 ;
 
 
