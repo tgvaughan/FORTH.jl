@@ -3,7 +3,15 @@
 ( Location of floating point. )
 : precision 10000 ;
 
-: >scaled precision 10 / * swap precision * + ;
+: sign dup abs / ;
+
+: >scaled
+    precision 10 / * over
+    ?dup 0<> if 
+        sign *
+    then
+    swap precision * +
+;
 
 ( Redefine multiplication.  Yay forth! )
 : * precision */ ;
@@ -48,9 +56,20 @@
     loop
 ;
 
+: xsteps 100 ;
+: ysteps 50 ;
+
 ( Draw the Mandelbrot Set!)
 : mandel ( x1 y1 x2 y2 -- )
 
+    1 pick 4 pick -
+    2 pick 5 pick do
+        i 0 inSet? if
+            42 emit
+        else
+            '.' emit
+        then
+    dup +loop
 ;
 
 ( Clean up - hide non-standard multiplication def. )

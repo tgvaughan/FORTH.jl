@@ -323,4 +323,4 @@
         SWAP DROP
 ;
 
-
+include ../examples/mandelbrot.4th
