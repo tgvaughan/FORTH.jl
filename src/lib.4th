@@ -116,6 +116,8 @@
 
 : I RSP@ 3 - @ ;
 
+: J RSP@ 6 - @ ;
+
 : ?LEAVE IMMEDIATE
         ' 0BRANCH , 13 ,
         ' R> , ' RDROP , ' RDROP ,
