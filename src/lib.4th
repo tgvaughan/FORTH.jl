@@ -1,6 +1,6 @@
 : / /MOD SWAP DROP ;
 : MOD /MOD DROP ;
-: */ * / ;
+: */ -ROT * SWAP / ;
 
 : NEGATE 0 SWAP - ;
 

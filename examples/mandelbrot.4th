@@ -1,4 +1,12 @@
-( --- Complex integer arithmetic --- )
+( --- Complex arithmetic --- )
+
+( Location of floating point. )
+: precision 10000 ;
+
+: >scaled precision 10 / * swap precision * + ;
+
+( Redefine multiplication.  Yay forth! )
+: * precision */ ;
 
 : c* ( x1 y1 x2 y2 -- x3 y3 )
         swap -rot               ( x1 x2 y1 y2 )
@@ -28,15 +36,22 @@
 
 : inSet? ( cr ci -- res )
     
-    100 0 DO
+    100 0 do
 
-        2SWAP 2DUP 5 ROLL 5 ROLL
+        2swap 2dup 5 roll 5 roll
         iterate
-        2DUP cmagsq
-        100 > IF
-            LEAVE
-        THEN
+        2dup cmagsq
+        100 > if
+            leave
+        then
 
-    LOOP
+    loop
 ;
 
+( Draw the Mandelbrot Set!)
+: mandel ( x1 y1 x2 y2 -- )
+
+;
+
+( Clean up - hide non-standard multiplication def. )
+hide *
