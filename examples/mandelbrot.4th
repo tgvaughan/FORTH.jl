@@ -17,43 +17,52 @@
 : * precision */ ;
 
 : c* ( x1 y1 x2 y2 -- x3 y3 )
-        swap -rot               ( x1 x2 y1 y2 )
-        2dup * negate           ( x1 x2 y1 y2 -y1y2 )
-        4 pick 4 pick * +       ( x1 x2 y1 y2 (x1x2-y1y2))
-        4 roll 2 roll *         ( x2 y1 (x1x2-y1y2) x1y2 )
-        3 roll 3 roll * +       ( (x1x2-y1y2) (x1y2+x2y1) )
+    swap -rot               ( x1 x2 y1 y2 )
+    2dup * negate           ( x1 x2 y1 y2 -y1y2 )
+    4 pick 4 pick * +       ( x1 x2 y1 y2 (x1x2-y1y2))
+    4 roll 2 roll *         ( x2 y1 (x1x2-y1y2) x1y2 )
+    3 roll 3 roll * +       ( (x1x2-y1y2) (x1y2+x2y1) )
 ;
 
 : c+ ( x1 y1 x2 y2 -- x3 y3 )
-        rot +
-        -rot +
-        swap
+    rot +
+    -rot +
+    swap
 ;
 
 : csq 2dup c* ;
 
 : cmagsq ( x1 y1 -- mag )
-        csq abs
+    csq abs
 ;
 
 ( --- Mandelbrot set calculations  --- )
 
 : iterate ( cr ci zr zi -- cr ci z'r z'i )
-        csq c+
+    csq c+
 ;
 
 : inSet? ( cr ci -- res )
-    
-    100 0 do
+    DEBUGON
 
-        2swap 2dup 5 roll 5 roll
+    0 0     ( z_0 = 0 )
+    
+    true    ( flag indicating set membership )
+    100 0 do
+        drop
+
         iterate
         2dup cmagsq
-        100 > if
+        4 >scaled > if
+            false ( not in set )
             leave
         then
 
+        true ( maybe in set )
     loop
+
+    ( Clear z and c, leaving set membership flag ) 
+    -rot 2drop -rot 2drop
 ;
 
 : xsteps 100 ;
