@@ -284,8 +284,17 @@ TWOSWAP = defPrimWord("2SWAP", () -> begin
     d = popPS()
     pushPS(b)
     pushPS(a)
-    pushPS(c)
     pushPS(d)
+    pushPS(c)
+    return NEXT
+end)
+
+TWOOVER = defPrimWord("2OVER", () -> begin
+    ensurePSDepth(4)
+    a = mem[reg.PSP-3]
+    b = mem[reg.PSP-2]
+    pushPS(a)
+    pushPS(b)
     return NEXT
 end)
 

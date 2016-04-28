@@ -32,19 +32,22 @@
 
 : csq 2dup c* ;
 
+
+: conj ( x y -- x -y )
+    negate
+;
+
 : cmagsq ( x1 y1 -- mag )
-    csq abs
+    2dup conj c* +
 ;
 
 ( --- Mandelbrot set calculations  --- )
 
 : iterate ( cr ci zr zi -- cr ci z'r z'i )
-    csq c+
+    2over 2swap csq c+
 ;
 
 : inSet? ( cr ci -- res )
-    DEBUGON
-
     0 0     ( z_0 = 0 )
     
     true    ( flag indicating set membership )
@@ -53,7 +56,7 @@
 
         iterate
         2dup cmagsq
-        4 >scaled > if
+        4 0 >scaled > if
             false ( not in set )
             leave
         then
@@ -66,19 +69,30 @@
 ;
 
 : xsteps 100 ;
-: ysteps 50 ;
+: ysteps 30 ;
 
 ( Draw the Mandelbrot Set!)
 : mandel ( x1 y1 x2 y2 -- )
 
-    1 pick 4 pick -
-    2 pick 5 pick do
-        i 0 inSet? if
-            42 emit
-        else
-            '.' emit
-        then
+    0 pick 3 pick - ysteps /
+    1 pick 4 pick do
+
+        2 pick 5 pick - xsteps /
+        3 pick 6 pick do
+
+            i j inSet? if
+                42 emit
+            else
+                space
+            then
+
+        dup +loop
+        drop
+
+        cr
+
     dup +loop
+    drop
 ;
 
 ( Clean up - hide non-standard multiplication def. )

@@ -109,6 +109,14 @@
 ;
 
 : DO IMMEDIATE
+        ' LIT , -1 , [COMPILE] IF
+        ' >R , ' >R ,
+        ' LIT , HERE @ 0 , ' >R ,
+        HERE @
+;
+
+: ?DO IMMEDIATE
+        ' 2DUP , ' - , [COMPILE] IF
         ' >R , ' >R ,
         ' LIT , HERE @ 0 , ' >R ,
         HERE @
@@ -132,12 +140,30 @@
 ;
 
 : +LOOP IMMEDIATE
+        ' DUP , \ Store copy of increment
+
         ' R> , ' SWAP , ' R> , ' SWAP , ' R> , ' SWAP , ' + , ' 2DUP , ' - ,
         ' SWAP , ' >R , ' SWAP , ' >R , ' SWAP , ' >R ,
-        ' 0<= , ' 0BRANCH ,
-        HERE @ - ,
+
+        \ Condition differently depending on sign of increment
+        ' SWAP , ' 0>= , [COMPILE] IF
+            ' 0<= ,
+        [COMPILE] ELSE
+            ' 0> ,
+        [COMPILE] THEN
+
+        \ Branch back to begining of loop kernel
+        ' 0BRANCH , HERE @ - ,
+
+        \ Clean up
         ' RDROP , ' RDROP , ' RDROP ,
+
+        \ Record address of loop end for any LEAVEs to use
         HERE @ SWAP !
+
+        [COMPILE] ELSE
+            ' 2DROP , \ Clean up if loop was entirely skipped (?DO)
+        [COMPILE] THEN
 ;
 
 : LOOP IMMEDIATE
@@ -171,12 +197,22 @@
         PSP@ SWAP -     ( add to the stack pointer )
         @               ( and fetch )
 ;
+: ROLL ( x_u x_u-1... x_0 u -- x_u-1 ... x_0 x_u )
+        1+ DUP PICK SWAP    ( x_u x_u-1 ... x_0 x_u u+1 )
+        PSP@ 1- SWAP - PSP@ 2- SWAP
+        DO
+            i 1+ @ i !
+        LOOP
+        SWAP DROP
+;
 
 ( With the looping constructs, we can now write SPACES, which writes n spaces to stdout. )
 : SPACES        ( n -- )
-        0 DO
-            SPACE
-        LOOP
+        DUP 0> IF
+            0 DO SPACE LOOP
+        ELSE
+            DROP
+        THEN
 ;
 
 ( Standard words for manipulating BASE. )
@@ -313,14 +349,3 @@
                 FALSE
         THEN
 ;
-
-: ROLL ( x_u x_u-1... x_0 u -- x_u-1 ... x_0 x_u )
-        1+ DUP PICK SWAP    ( x_u x_u-1 ... x_0 x_u u+1 )
-        PSP@ 1- SWAP - PSP@ 2- SWAP
-        DO
-            i 1+ @ i !
-        LOOP
-        SWAP DROP
-;
-
-include ../examples/mandelbrot.4th
