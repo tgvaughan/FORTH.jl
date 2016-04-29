@@ -349,3 +349,92 @@
                 FALSE
         THEN
 ;
+
+
+( STRINGS ---------------------------------------------------------------------- )
+
+( Since the smallest unit of memory in our system is 64 bits and since strings
+  are stored as arrays of 64 bit integers, the character store/fetch words are
+  just aliases of the standard store/fetch words. )
+: C! ! ;
+: C@ @ ;
+
+( Block copy, however, is important and novel: )
+: CMOVE ( src dest length -- )
+
+        DUP 0<= IF
+                EXIT
+        THEN
+
+        -ROT OVER -         ( length src (dest-src) )
+        -ROT DUP ROT + SWAP ( (dest-src) (src+length) src )
+    
+        DO
+                I @         ( (dest-src) i@ )
+                OVER I +    ( (dest-src) i@ (dest-src+i) )
+                !           ( (dest-src) )
+        LOOP
+
+        DROP
+;
+
+( C, appends a byte to the current compiled word. )
+: C,
+        HERE @ C!
+        1 HERE +!
+;
+
+: S" IMMEDIATE          ( -- addr len )
+        STATE @ IF      ( compiling? )
+                ' LITSTRING ,   ( compile LITSTRING )
+                HERE @          ( save the address of the length word on the stack )
+                0 ,             ( dummy length - we don't know what it is yet )
+                KEY DROP
+                BEGIN
+                        KEY             ( get next character of the string )
+                        DUP '"' <>
+                WHILE
+                        C,              ( copy character )
+                REPEAT
+                DROP            ( drop the double quote character at the end )
+                DUP             ( get the saved address of the length word )
+                HERE @ SWAP -   ( calculate the length )
+                1-              ( subtract 1 (because we measured from the start of the length word) )
+                SWAP !          ( and back-fill the length location )
+        ELSE            ( immediate mode )
+                HERE @          ( get the start address of the temporary space )
+                KEY DROP
+                BEGIN
+                        KEY
+                        DUP '"' <>
+                WHILE
+                        OVER C!         ( save next character )
+                        1+              ( increment address )
+                REPEAT
+                DROP            ( drop the final " character )
+                HERE @ -        ( calculate the length )
+                HERE @          ( push the start address )
+                SWAP            ( addr len )
+        THEN
+;
+
+: ." IMMEDIATE          ( -- )
+        STATE @ IF      ( compiling? )
+                [COMPILE] S"    ( read the string, and compile LITSTRING, etc. )
+                ' TELL ,        ( compile the final TELL )
+        ELSE
+                ( In immediate mode, just read characters and print them until we get
+                  to the ending double quote. )
+                KEY DROP
+                BEGIN
+                        KEY
+                        DUP '"' = IF
+                                DROP    ( drop the double quote character )
+                                EXIT    ( return from this function )
+                        THEN
+                        EMIT
+                AGAIN
+        THEN
+;
+
+CR CR ."  --- Welcome to TimForth! ---" CR CR
