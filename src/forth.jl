@@ -822,10 +822,14 @@ IMMEDIATE = defPrimWord("IMMEDIATE", () -> begin
     return NEXT
 end, flags=F_IMMED)
 
+#TICK = defWord("'",
+#    [STATE_CFA, FETCH, ZBRANCH, 7,
+#    FROMR, DUP, INCR, TOR, FETCH, EXIT,
+#    WORD, FIND, TOCFA, EXIT])
+
 TICK = defWord("'",
-    [STATE_CFA, FETCH, ZBRANCH, 7,
-    FROMR, DUP, INCR, TOR, FETCH, EXIT,
-    WORD, FIND, TOCFA, EXIT])
+    [FROMR, DUP, INCR, TOR, FETCH, EXIT])
+
 
 # Strings
 

@@ -572,7 +572,6 @@
         ( begin the definition with : NAME [IMMEDIATE] )
         ':' EMIT SPACE DUP ID. SPACE
         DUP ?IMMEDIATE IF ." IMMEDIATE " THEN
-        CR 8 SPACES
 
         >DFA            ( get the data address, ie. points after DOCOL | end-of-word start-of-data )
 
@@ -580,9 +579,7 @@
         BEGIN           ( end start )
                 2DUP >
         WHILE
-                DUP @ CFA> ID. SPACE
-                1+
-(                DUP @           ( end start codeword )
+                DUP @           ( end start codeword )
 
                 CASE
                 ' LIT OF                ( is it LIT ? )
@@ -596,7 +593,7 @@
                         2DUP TELL               ( print the string )
                         '"' EMIT SPACE          ( finish the string with a final quote )
                         +                       ( end start+1+len, aligned )
-                        1-                     ( because we're about to add 1 below )
+                        1-                     ( because we're about to add 4 below )
                 ENDOF
                 ' 0BRANCH OF            ( is it 0BRANCH ? )
                         ." 0BRANCH ( "
@@ -633,7 +630,6 @@
                 ENDCASE
 
                 1+             ( end start+1 )
-)
         REPEAT
 
         ';' EMIT CR
