@@ -171,6 +171,36 @@
         [COMPILE] +LOOP
 ;
 
+
+\ CASE ------------------------------------------------------------------------
+
+: CASE IMMEDIATE
+        0               \ push 0 to mark the bottom of the stack
+;
+
+: OF IMMEDIATE
+        ['] OVER ,        \ compile OVER
+        ['] = ,           \ compile =
+        [COMPILE] IF      \ compile IF
+        ['] DROP ,        \ compile DROP
+;
+
+: ENDOF IMMEDIATE
+        [COMPILE] ELSE    \ ENDOF is the same as ELSE
+;
+
+: ENDCASE IMMEDIATE
+        ['] DROP ,        \ compile DROP
+
+        \ keep compiling THEN until we get to our zero marker
+        BEGIN
+                ?DUP
+        WHILE
+                [COMPILE] THEN
+        REPEAT
+;
+
+
 \ COMMENTS ----------------------------------------------------------------------
 
 : ( IMMEDIATE
@@ -437,6 +467,7 @@
         THEN
 ;
 
+
 ( CONSTANTS AND VARIABLES ------------------------------------------------------ )
 
 : CONSTANT
@@ -513,7 +544,13 @@
         WHILE
                 SWAP 1+         ( addr len -- len addr+1 )
                 DUP @           ( len addr -- len addr char | get the next character)
-                EMIT            ( len addr char -- len addr | and print it)
+                DUP 32 >= OVER 127 <= AND IF
+                        EMIT    ( len addr char -- len addr | and print it)
+                ELSE
+                        BASE @ SWAP HEX
+                        ." \x" 0 .R
+                        BASE !
+                THEN
                 SWAP 1-         ( len addr -- addr len-1    | subtract one from length )
         REPEAT
         2DROP           ( len addr -- )
@@ -544,6 +581,7 @@
         CR
 ;
 
+
 ( FORGET ---------------------------------------------------------------------- )
 
 : FORGET
@@ -555,34 +593,6 @@
 ( DUMP ------------------------------------------------------------------------ )
 
 \ TODO!
-
-( CASE ------------------------------------------------------------------------ )
-
-: CASE IMMEDIATE
-        0               ( push 0 to mark the bottom of the stack )
-;
-
-: OF IMMEDIATE
-        ['] OVER ,        ( compile OVER )
-        ['] = ,           ( compile = )
-        [COMPILE] IF    ( compile IF )
-        ['] DROP ,        ( compile DROP )
-;
-
-: ENDOF IMMEDIATE
-        [COMPILE] ELSE  ( ENDOF is the same as ELSE )
-;
-
-: ENDCASE IMMEDIATE
-        ['] DROP ,        ( compile DROP )
-
-        ( keep compiling THEN until we get to our zero marker )
-        BEGIN
-                ?DUP
-        WHILE
-                [COMPILE] THEN
-        REPEAT
-;
 
 
 ( DECOMPILER ------------------------------------------------------------------ )
@@ -624,7 +634,7 @@
 
         ( begin the definition with : NAME [IMMEDIATE] )
         ':' EMIT SPACE DUP ID. SPACE
-        DUP ?IMMEDIATE IF ." IMMEDIATE " THEN
+        DUP ?IMMEDIATE IF ." IMMEDIATE " THEN CR 4 
 
         >DFA            ( get the data address, ie. points after DOCOL | end-of-word start-of-data )
 
@@ -661,7 +671,7 @@
                         ." ) "
                 ENDOF
                 ['] ['] OF                  ( is it ['] ? )
-                        [ CHAR ' ] LITERAL EMIT SPACE
+                        ." ['] "
                         1+ DUP @               ( get the next codeword )
                         CFA>                    ( and force it to be printed as a dictionary entry )
                         ID. SPACE
