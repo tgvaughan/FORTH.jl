@@ -437,4 +437,213 @@
         THEN
 ;
 
-CR CR ."  --- Welcome to TimForth! ---" CR CR
+( CONSTANTS AND VARIABLES ------------------------------------------------------ )
+
+: CONSTANT
+        WORD            ( get the name (the name follows CONSTANT) )
+        CREATE          ( make the dictionary entry )
+        DOCOL ,         ( append DOCOL (the codeword field of this word) )
+        ' LIT ,         ( append the codeword LIT )
+\        ,               ( append the value on the top of the stack )
+        ' EXIT ,        ( append the codeword EXIT )
+;
+
+( PRINTING THE DICTIONARY ------------------------------------------------------ )
+
+: ID.
+        1+              ( skip over the link pointer )
+        DUP @           ( get the flags/length byte )
+        F_LENMASK AND   ( mask out the flags - just want the length )
+
+        BEGIN
+                DUP 0>          ( length > 0? )
+        WHILE
+                SWAP 1+         ( addr len -- len addr+1 )
+                DUP @           ( len addr -- len addr char | get the next character)
+                EMIT            ( len addr char -- len addr | and print it)
+                SWAP 1-         ( len addr -- addr len-1    | subtract one from length )
+        REPEAT
+        2DROP           ( len addr -- )
+;
+
+: ?HIDDEN
+        1+              ( skip over the link pointer )
+        @               ( get the flags/length byte )
+        F_HIDDEN AND    ( mask the F_HIDDEN flag and return it (as a truth value) )
+;
+: ?IMMEDIATE
+        1+              ( skip over the link pointer )
+        @               ( get the flags/length byte )
+        F_IMMED AND     ( mask the F_IMMED flag and return it (as a truth value) )
+;
+
+: WORDS
+        LATEST @        ( start at LATEST dictionary entry )
+        BEGIN
+                ?DUP            ( while link pointer is not null )
+        WHILE
+                DUP ?HIDDEN NOT IF      ( ignore hidden words )
+                        DUP ID.         ( but if not hidden, print the word )
+                        SPACE
+                THEN
+                @               ( dereference the link pointer - go to previous word )
+        REPEAT
+        CR
+;
+
+( FORGET ---------------------------------------------------------------------- )
+
+: FORGET
+        WORD FIND       ( find the word, gets the dictionary entry address )
+        DUP @ LATEST !  ( set LATEST to point to the previous word )
+        HERE !          ( and store HERE with the dictionary address )
+;
+
+( DUMP ------------------------------------------------------------------------ )
+
+\ TODO!
+
+( CASE ------------------------------------------------------------------------ )
+
+: CASE IMMEDIATE
+        0               ( push 0 to mark the bottom of the stack )
+;
+
+: OF IMMEDIATE
+        ' OVER ,        ( compile OVER )
+        ' = ,           ( compile = )
+        [COMPILE] IF    ( compile IF )
+        ' DROP ,        ( compile DROP )
+;
+
+: ENDOF IMMEDIATE
+        [COMPILE] ELSE  ( ENDOF is the same as ELSE )
+;
+
+: ENDCASE IMMEDIATE
+        ' DROP ,        ( compile DROP )
+
+        ( keep compiling THEN until we get to our zero marker )
+        BEGIN
+                ?DUP
+        WHILE
+                [COMPILE] THEN
+        REPEAT
+;
+
+
+( DECOMPILER ------------------------------------------------------------------ )
+
+: CFA>
+        LATEST @        ( start at LATEST dictionary entry )
+        BEGIN
+                ?DUP            ( while link pointer is not null )
+        WHILE
+                2DUP SWAP       ( cfa curr curr cfa )
+                < IF            ( current dictionary entry < cfa? )
+                        NIP             ( leave curr dictionary entry on the stack )
+                        EXIT
+                THEN
+                @               ( follow link pointer back )
+        REPEAT
+        DROP            ( restore stack )
+        0               ( sorry, nothing found )
+;
+
+: SEE
+        WORD FIND       ( find the dictionary entry to decompile )
+
+        ( Now we search again, looking for the next word in the dictionary.  This gives us
+          the length of the word that we will be decompiling.  (Well, mostly it does). )
+        HERE @          ( address of the end of the last compiled word )
+        LATEST @        ( word last curr )
+        BEGIN
+                2 PICK          ( word last curr word )
+                OVER            ( word last curr word curr )
+                <>              ( word last curr word<>curr? )
+        WHILE                   ( word last curr )
+                NIP             ( word curr )
+                DUP @           ( word curr prev (which becomes: word last curr) )
+        REPEAT
+
+        DROP            ( at this point, the stack is: start-of-word end-of-word )
+        SWAP            ( end-of-word start-of-word )
+
+        ( begin the definition with : NAME [IMMEDIATE] )
+        ':' EMIT SPACE DUP ID. SPACE
+        DUP ?IMMEDIATE IF ." IMMEDIATE " THEN
+        CR 8 SPACES
+
+        >DFA            ( get the data address, ie. points after DOCOL | end-of-word start-of-data )
+
+        ( now we start decompiling until we hit the end of the word )
+        BEGIN           ( end start )
+                2DUP >
+        WHILE
+                DUP @ CFA> ID. SPACE
+                1+
+(                DUP @           ( end start codeword )
+
+                CASE
+                ' LIT OF                ( is it LIT ? )
+                        1+ DUP @                ( get next word which is the integer constant )
+                        .                       ( and print it )
+                ENDOF
+                ' LITSTRING OF          ( is it LITSTRING ? )
+                        [ CHAR S ] LITERAL EMIT '"' EMIT SPACE ( print S"<space> )
+                        1+ DUP @                ( get the length word )
+                        SWAP 1+ SWAP            ( end start+1 length )
+                        2DUP TELL               ( print the string )
+                        '"' EMIT SPACE          ( finish the string with a final quote )
+                        +                       ( end start+1+len, aligned )
+                        1-                     ( because we're about to add 1 below )
+                ENDOF
+                ' 0BRANCH OF            ( is it 0BRANCH ? )
+                        ." 0BRANCH ( "
+                        1+ DUP @               ( print the offset )
+                        .
+                        ." ) "
+                ENDOF
+                ' BRANCH OF             ( is it BRANCH ? )
+                        ." BRANCH ( "
+                        1+ DUP @               ( print the offset )
+                        .
+                        ." ) "
+                ENDOF
+                ' ' OF                  ( is it ' (TICK) ? )
+                        [ CHAR ' ] LITERAL EMIT SPACE
+                        1+ DUP @               ( get the next codeword )
+                        CFA>                    ( and force it to be printed as a dictionary entry )
+                        ID. SPACE
+                ENDOF
+                ' EXIT OF               ( is it EXIT? )
+                        ( We expect the last word to be EXIT, and if it is then we don't print it
+                          because EXIT is normally implied by ;.  EXIT can also appear in the middle
+                          of words, and then it needs to be printed. )
+                        2DUP                    ( end start end start )
+                        1+                     ( end start end start+1 )
+                        <> IF                   ( end start | we're not at the end )
+                                ." EXIT "
+                        THEN
+                ENDOF
+                                        ( default case: )
+                        DUP                     ( in the default case we always need to DUP before using )
+                        CFA>                    ( look up the codeword to get the dictionary entry )
+                        ID. SPACE               ( and print it )
+                ENDCASE
+
+                1+             ( end start+1 )
+)
+        REPEAT
+
+        ';' EMIT CR
+
+        2DROP           ( restore stack )
+;
+
+
+( WELCOME MESSAGE ------------------------------------------------------------- )
+
+CR CR ."  --- TimForth initialized  --- "
+
+
