@@ -1,7 +1,7 @@
 ( --- Complex arithmetic --- )
 
 ( Location of floating point. )
-: precision 10000 ;
+10000 value precision
 
 : sign dup abs / ;
 
@@ -47,11 +47,13 @@
     2over 2swap csq c+
 ;
 
+100 value maxiter
+
 : inSet? ( cr ci -- res )
     0 0     ( z_0 = 0 )
     
     true    ( flag indicating set membership )
-    100 0 do
+    maxiter 0 do
         drop
 
         iterate
@@ -68,11 +70,15 @@
     -rot 2drop -rot 2drop
 ;
 
-: xsteps 100 ;
-: ysteps 30 ;
+100 value xsteps
+30 value ysteps
+
+: mandelDomain
+        -2 0 >scaled -1 0 >scaled 0 5 >scaled 1 0 >scaled
+;
 
 ( Draw the Mandelbrot Set!)
-: mandel ( x1 y1 x2 y2 -- )
+: mandelDraw ( x1 y1 x2 y2 -- )
 
     0 pick 3 pick - ysteps /
     1 pick 4 pick do

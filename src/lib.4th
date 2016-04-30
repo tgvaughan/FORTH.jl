@@ -448,6 +448,59 @@
         ' EXIT ,        ( append the codeword EXIT )
 ;
 
+: ALLOT         ( n -- addr )
+        HERE @ SWAP     ( here n )
+        HERE +!         ( adds n to HERE, after this the old value of HERE is still on the stack )
+;
+
+: VARIABLE
+        1 CELLS ALLOT   ( allocate 1 cell of memory, push the pointer to this memory )
+        WORD CREATE     ( make the dictionary entry (the name follows VARIABLE) )
+        DOCOL ,         ( append DOCOL (the codeword field of this word) )
+        ' LIT ,         ( append the codeword LIT )
+        ,               ( append the pointer to the new memory )
+        ' EXIT ,        ( append the codeword EXIT )
+;
+
+
+: VALUE         ( n -- )
+        WORD CREATE     ( make the dictionary entry (the name follows VALUE) )
+        DOCOL ,         ( append DOCOL )
+        ' LIT ,         ( append the codeword LIT )
+        ,               ( append the initial value )
+        ' EXIT ,        ( append the codeword EXIT )
+;
+
+: TO IMMEDIATE  ( n -- )
+        WORD            ( get the name of the value )
+        FIND            ( look it up in the dictionary )
+        >DFA            ( get a pointer to the first data field (the 'LIT') )
+        1+              ( increment to point at the value )
+        STATE @ IF      ( compiling? )
+                ' LIT ,         ( compile LIT )
+                ,               ( compile the address of the value )
+                ' ! ,           ( compile ! )
+        ELSE            ( immediate mode )
+                !               ( update it straightaway )
+        THEN
+;
+
+( x +TO VAL adds x to VAL )
+: +TO IMMEDIATE
+        WORD            ( get the name of the value )
+        FIND            ( look it up in the dictionary )
+        >DFA            ( get a pointer to the first data field (the 'LIT') )
+        1+              ( increment to point at the value )
+        STATE @ IF      ( compiling? )
+                ' LIT ,         ( compile LIT )
+                ,               ( compile the address of the value )
+                ' +! ,          ( compile +! )
+        ELSE            ( immediate mode )
+                +!              ( update it straightaway )
+        THEN
+;
+
+
 ( PRINTING THE DICTIONARY ------------------------------------------------------ )
 
 : ID.
