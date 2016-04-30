@@ -15,7 +15,7 @@
 : '\n' 10 ;
 : BL 32 ;
 
-: LITERAL IMMEDIATE ' LIT , , ;
+: LITERAL IMMEDIATE ['] LIT , , ;
 
 : ':' [ CHAR : ] LITERAL ;
 : ';' [ CHAR ; ] LITERAL ;
@@ -51,7 +51,7 @@
 \ CONTROL STRUCTURES ----------------------------------------------------------------------
 
 : IF IMMEDIATE
-        ' 0BRANCH ,     \ compile 0BRANCH
+        ['] 0BRANCH ,     \ compile 0BRANCH
         HERE @          \ save location of the offset on the stack
         0 ,             \ compile a dummy offset
 ;
@@ -63,7 +63,7 @@
 ;
 
 : ELSE IMMEDIATE
-        ' BRANCH ,      \ definite branch to just over the false-part
+        ['] BRANCH ,      \ definite branch to just over the false-part
         HERE @          \ save location of the offset on the stack
         0 ,             \ compile a dummy offset
         SWAP            \ now back-fill the original (IF) offset
@@ -77,25 +77,25 @@
 ;
 
 : UNTIL IMMEDIATE
-        ' 0BRANCH ,     \ compile 0BRANCH
+        ['] 0BRANCH ,     \ compile 0BRANCH
         HERE @ -        \ calculate the offset from the address saved on the stack
         ,               \ compile the offset here
 ;
 
 : AGAIN IMMEDIATE
-        ' BRANCH ,      \ compile BRANCH
+        ['] BRANCH ,      \ compile BRANCH
         HERE @ -        \ calculate the offset back
         ,               \ compile the offset here
 ;
 
 : WHILE IMMEDIATE
-        ' 0BRANCH ,     \ compile 0BRANCH
+        ['] 0BRANCH ,     \ compile 0BRANCH
         HERE @          \ save location of the offset2 on the stack
         0 ,             \ compile a dummy offset2
 ;
 
 : REPEAT IMMEDIATE
-        ' BRANCH ,      \ compile BRANCH
+        ['] BRANCH ,      \ compile BRANCH
         SWAP            \ get the original offset (from BEGIN)
         HERE @ - ,      \ and compile it after BRANCH
         DUP
@@ -104,21 +104,21 @@
 ;
 
 : UNLESS IMMEDIATE
-        ' NOT ,         \ compile NOT (to reverse the test)
+        ['] NOT ,         \ compile NOT (to reverse the test)
         [COMPILE] IF    \ continue by calling the normal IF
 ;
 
 : DO IMMEDIATE
-        ' LIT , -1 , [COMPILE] IF
-        ' >R , ' >R ,
-        ' LIT , HERE @ 0 , ' >R ,
+        ['] LIT , -1 , [COMPILE] IF
+        ['] >R , ['] >R ,
+        ['] LIT , HERE @ 0 , ['] >R ,
         HERE @
 ;
 
 : ?DO IMMEDIATE
-        ' 2DUP , ' - , [COMPILE] IF
-        ' >R , ' >R ,
-        ' LIT , HERE @ 0 , ' >R ,
+        ['] 2DUP , ['] - , [COMPILE] IF
+        ['] >R , ['] >R ,
+        ['] LIT , HERE @ 0 , ['] >R ,
         HERE @
 ;
 
@@ -127,47 +127,47 @@
 : J RSP@ 6 - @ ;
 
 : ?LEAVE IMMEDIATE
-        ' 0BRANCH , 13 ,
-        ' R> , ' RDROP , ' RDROP ,
-        ' LIT ,  HERE @ 7 + , ' DUP , ' -ROT , ' - , ' SWAP , ' ! ,
-        ' BRANCH ,
+        ['] 0BRANCH , 13 ,
+        ['] R> , ['] RDROP , ['] RDROP ,
+        ['] LIT ,  HERE @ 7 + , ['] DUP , ['] -ROT , ['] - , ['] SWAP , ['] ! ,
+        ['] BRANCH ,
         0 ,
 ;
 
 : LEAVE IMMEDIATE
-        ' LIT , -1 ,
+        ['] LIT , -1 ,
         [COMPILE] ?LEAVE
 ;
 
 : +LOOP IMMEDIATE
-        ' DUP , \ Store copy of increment
+        ['] DUP , \ Store copy of increment
 
-        ' R> , ' SWAP , ' R> , ' SWAP , ' R> , ' SWAP , ' + , ' 2DUP , ' - ,
-        ' SWAP , ' >R , ' SWAP , ' >R , ' SWAP , ' >R ,
+        ['] R> , ['] SWAP , ['] R> , ['] SWAP , ['] R> , ['] SWAP , ['] + , ['] 2DUP , ['] - ,
+        ['] SWAP , ['] >R , ['] SWAP , ['] >R , ['] SWAP , ['] >R ,
 
         \ Condition differently depending on sign of increment
-        ' SWAP , ' 0>= , [COMPILE] IF
-            ' 0<= ,
+        ['] SWAP , ['] 0>= , [COMPILE] IF
+            ['] 0<= ,
         [COMPILE] ELSE
-            ' 0> ,
+            ['] 0> ,
         [COMPILE] THEN
 
         \ Branch back to begining of loop kernel
-        ' 0BRANCH , HERE @ - ,
+        ['] 0BRANCH , HERE @ - ,
 
         \ Clean up
-        ' RDROP , ' RDROP , ' RDROP ,
+        ['] RDROP , ['] RDROP , ['] RDROP ,
 
         \ Record address of loop end for any LEAVEs to use
         HERE @ SWAP !
 
         [COMPILE] ELSE
-            ' 2DROP , \ Clean up if loop was entirely skipped (?DO)
+            ['] 2DROP , \ Clean up if loop was entirely skipped (?DO)
         [COMPILE] THEN
 ;
 
 : LOOP IMMEDIATE
-        ' LIT , 1 ,
+        ['] LIT , 1 ,
         [COMPILE] +LOOP
 ;
 
@@ -386,7 +386,7 @@
 
 : S" IMMEDIATE          ( -- addr len )
         STATE @ IF      ( compiling? )
-                ' LITSTRING ,   ( compile LITSTRING )
+                ['] LITSTRING ,   ( compile LITSTRING )
                 HERE @          ( save the address of the length word on the stack )
                 0 ,             ( dummy length - we don't know what it is yet )
                 KEY DROP
@@ -421,7 +421,7 @@
 : ." IMMEDIATE          ( -- )
         STATE @ IF      ( compiling? )
                 [COMPILE] S"    ( read the string, and compile LITSTRING, etc. )
-                ' TELL ,        ( compile the final TELL )
+                ['] TELL ,        ( compile the final TELL )
         ELSE
                 ( In immediate mode, just read characters and print them until we get
                   to the ending double quote. )
@@ -443,9 +443,9 @@
         WORD            ( get the name (the name follows CONSTANT) )
         CREATE          ( make the dictionary entry )
         DOCOL ,         ( append DOCOL (the codeword field of this word) )
-        ' LIT ,         ( append the codeword LIT )
-\        ,               ( append the value on the top of the stack )
-        ' EXIT ,        ( append the codeword EXIT )
+        ['] LIT ,       ( append the codeword LIT )
+        ,               ( append the value on the top of the stack )
+        ['] EXIT ,      ( append the codeword EXIT )
 ;
 
 : ALLOT         ( n -- addr )
@@ -457,18 +457,18 @@
         1 CELLS ALLOT   ( allocate 1 cell of memory, push the pointer to this memory )
         WORD CREATE     ( make the dictionary entry (the name follows VARIABLE) )
         DOCOL ,         ( append DOCOL (the codeword field of this word) )
-        ' LIT ,         ( append the codeword LIT )
+        ['] LIT ,         ( append the codeword LIT )
         ,               ( append the pointer to the new memory )
-        ' EXIT ,        ( append the codeword EXIT )
+        ['] EXIT ,        ( append the codeword EXIT )
 ;
 
 
 : VALUE         ( n -- )
         WORD CREATE     ( make the dictionary entry (the name follows VALUE) )
         DOCOL ,         ( append DOCOL )
-        ' LIT ,         ( append the codeword LIT )
+        ['] LIT ,       ( append the codeword LIT )
         ,               ( append the initial value )
-        ' EXIT ,        ( append the codeword EXIT )
+        ['] EXIT ,      ( append the codeword EXIT )
 ;
 
 : TO IMMEDIATE  ( n -- )
@@ -477,9 +477,9 @@
         >DFA            ( get a pointer to the first data field (the 'LIT') )
         1+              ( increment to point at the value )
         STATE @ IF      ( compiling? )
-                ' LIT ,         ( compile LIT )
+                ['] LIT ,         ( compile LIT )
                 ,               ( compile the address of the value )
-                ' ! ,           ( compile ! )
+                ['] ! ,           ( compile ! )
         ELSE            ( immediate mode )
                 !               ( update it straightaway )
         THEN
@@ -492,9 +492,9 @@
         >DFA            ( get a pointer to the first data field (the 'LIT') )
         1+              ( increment to point at the value )
         STATE @ IF      ( compiling? )
-                ' LIT ,         ( compile LIT )
+                ['] LIT ,         ( compile LIT )
                 ,               ( compile the address of the value )
-                ' +! ,          ( compile +! )
+                ['] +! ,          ( compile +! )
         ELSE            ( immediate mode )
                 +!              ( update it straightaway )
         THEN
@@ -563,10 +563,10 @@
 ;
 
 : OF IMMEDIATE
-        ' OVER ,        ( compile OVER )
-        ' = ,           ( compile = )
+        ['] OVER ,        ( compile OVER )
+        ['] = ,           ( compile = )
         [COMPILE] IF    ( compile IF )
-        ' DROP ,        ( compile DROP )
+        ['] DROP ,        ( compile DROP )
 ;
 
 : ENDOF IMMEDIATE
@@ -574,7 +574,7 @@
 ;
 
 : ENDCASE IMMEDIATE
-        ' DROP ,        ( compile DROP )
+        ['] DROP ,        ( compile DROP )
 
         ( keep compiling THEN until we get to our zero marker )
         BEGIN
@@ -635,11 +635,11 @@
                 DUP @           ( end start codeword )
 
                 CASE
-                ' LIT OF                ( is it LIT ? )
+                ['] LIT OF                ( is it LIT ? )
                         1+ DUP @                ( get next word which is the integer constant )
                         .                       ( and print it )
                 ENDOF
-                ' LITSTRING OF          ( is it LITSTRING ? )
+                ['] LITSTRING OF          ( is it LITSTRING ? )
                         [ CHAR S ] LITERAL EMIT '"' EMIT SPACE ( print S"<space> )
                         1+ DUP @                ( get the length word )
                         SWAP 1+ SWAP            ( end start+1 length )
@@ -648,25 +648,25 @@
                         +                       ( end start+1+len, aligned )
                         1-                     ( because we're about to add 4 below )
                 ENDOF
-                ' 0BRANCH OF            ( is it 0BRANCH ? )
+                ['] 0BRANCH OF            ( is it 0BRANCH ? )
                         ." 0BRANCH ( "
                         1+ DUP @               ( print the offset )
                         .
                         ." ) "
                 ENDOF
-                ' BRANCH OF             ( is it BRANCH ? )
+                ['] BRANCH OF             ( is it BRANCH ? )
                         ." BRANCH ( "
                         1+ DUP @               ( print the offset )
                         .
                         ." ) "
                 ENDOF
-                ' ' OF                  ( is it ' (TICK) ? )
+                ['] ['] OF                  ( is it ['] ? )
                         [ CHAR ' ] LITERAL EMIT SPACE
                         1+ DUP @               ( get the next codeword )
                         CFA>                    ( and force it to be printed as a dictionary entry )
                         ID. SPACE
                 ENDOF
-                ' EXIT OF               ( is it EXIT? )
+                ['] EXIT OF               ( is it EXIT? )
                         ( We expect the last word to be EXIT, and if it is then we don't print it
                           because EXIT is normally implied by ;.  EXIT can also appear in the middle
                           of words, and then it needs to be printed. )

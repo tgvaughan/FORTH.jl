@@ -73,12 +73,8 @@
 100 value xsteps
 30 value ysteps
 
-: mandelDomain
-        -2 0 >scaled -1 0 >scaled 0 5 >scaled 1 0 >scaled
-;
-
 ( Draw the Mandelbrot Set!)
-: mandelDraw ( x1 y1 x2 y2 -- )
+: mandeldraw ( x1 y1 x2 y2 -- )
 
     0 pick 3 pick - ysteps /
     1 pick 4 pick do
@@ -103,3 +99,11 @@
 
 ( Clean up - hide non-standard multiplication def. )
 hide *
+
+( Default picture )
+: mandel
+        -2 0 >scaled -1 0 >scaled 0 5 >scaled 1 0 >scaled
+        mandeldraw
+;
+
+." Enter 'mandel' to draw the Mandelbrot Set."
