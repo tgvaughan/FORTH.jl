@@ -123,7 +123,7 @@ end
 
 callPrim(addr::Int64) = primitives[-addr]()
 
-# Word creation
+# Word creation functions
 
 function createHeader(name::AbstractString, flags::Int64)
     mem[mem[HERE]] = mem[LATEST]
@@ -159,7 +159,7 @@ function defWord(name::AbstractString, wordAddrs::Array{Int64,1}; flags::Int64=0
     return addr
 end
 
-# Variable creation
+# Variable creation functions
 
 function defExistingVar(name::AbstractString, varAddr::Int64; flags::Int64=0)
 
@@ -175,22 +175,17 @@ function defNewVar(name::AbstractString, initial::Int64; flags::Int64=0)
     codeWordAddr = mem[HERE]
     varAddr = mem[HERE] + 1
 
-    f = eval(:(() -> begin
-        pushPS($(varAddr))
-        return NEXT
-    end))
-
-    mem[mem[HERE]] = defPrim(f, name=name); mem[HERE] += 1
+    mem[mem[HERE]] = DOVAR; mem[HERE] += 1
     mem[mem[HERE]] = initial; mem[HERE] += 1
 
     return varAddr, codeWordAddr
 end
 
 function defConst(name::AbstractString, val::Int64; flags::Int64=0)
-    defPrimWord(name, eval(:(() -> begin
-        pushPS($(val))
-        return NEXT
-    end)))
+    createHeader(name, flags)
+
+    mem[mem[HERE]] = DOCON; mem[HERE] += 1
+    mem[mem[HERE]] = val; mem[HERE] += 1
 
     return val
 end
@@ -208,6 +203,16 @@ DOCOL = defPrim(() -> begin
     reg.IP = reg.W + 1
     return NEXT
 end, name="DOCOL")
+
+DOVAR = defPrim(() -> begin
+    pushPS(reg.W + 1)
+    return NEXT
+end, name="DOVAR")
+
+DOCON = defPrim(() -> begin
+    pushPS(mem[reg.W + 1])
+    return NEXT
+end, name="DOVAR")
 
 EXIT = defPrimWord("EXIT", () -> begin
     reg.IP = popRS()
@@ -520,6 +525,8 @@ BASE, BASE_CFA = defNewVar("BASE", 10)
 
 defConst("VERSION", 1)
 defConst("DOCOL", DOCOL)
+defConst("DOCON", DOCON)
+defConst("DOVAR", DOVAR)
 defConst("DICT", DICT)
 F_IMMED = defConst("F_IMMED", 128)
 F_HIDDEN = defConst("F_HIDDEN", 256)
