@@ -471,8 +471,7 @@
 ( CONSTANTS AND VARIABLES ------------------------------------------------------ )
 
 : CONSTANT
-        WORD            ( get the name (the name follows CONSTANT) )
-        CREATE          ( make the dictionary entry )
+        WORD HEADER     ( make dictionary entry (the name follows CONSTANT) )
         DOCOL ,         ( append DOCOL (the codeword field of this word) )
         ['] LIT ,       ( append the codeword LIT )
         ,               ( append the value on the top of the stack )
@@ -486,7 +485,7 @@
 
 : VARIABLE
         1 CELLS ALLOT   ( allocate 1 cell of memory, push the pointer to this memory )
-        WORD CREATE     ( make the dictionary entry (the name follows VARIABLE) )
+        WORD HEADER     ( make the dictionary entry (the name follows VARIABLE) )
         DOCOL ,         ( append DOCOL (the codeword field of this word) )
         ['] LIT ,         ( append the codeword LIT )
         ,               ( append the pointer to the new memory )
@@ -495,7 +494,7 @@
 
 
 : VALUE         ( n -- )
-        WORD CREATE     ( make the dictionary entry (the name follows VALUE) )
+        WORD HEADER     ( make the dictionary entry (the name follows VALUE) )
         DOCOL ,         ( append DOCOL )
         ['] LIT ,       ( append the codeword LIT )
         ,               ( append the initial value )

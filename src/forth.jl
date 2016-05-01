@@ -523,11 +523,12 @@ BASE, BASE_CFA = defNewVar("BASE", 10)
 
 # Constants
 
-defConst("VERSION", 1)
 defConst("DOCOL", DOCOL)
 defConst("DOCON", DOCON)
 defConst("DOVAR", DOVAR)
+
 defConst("DICT", DICT)
+
 F_IMMED = defConst("F_IMMED", 128)
 F_HIDDEN = defConst("F_HIDDEN", 256)
 F_LENMASK = defConst("F_LENMASK", 127)
@@ -769,7 +770,7 @@ end)
 
 # Compilation
 
-CREATE = defPrimWord("CREATE", () -> begin
+HEADER = defPrimWord("HEADER", () -> begin
 
     wordLen = popPS()
     wordAddr = popPS()
@@ -811,7 +812,7 @@ HIDE = defWord("HIDE",
 
 COLON = defWord(":",
     [WORD,
-    CREATE,
+    HEADER,
     LIT, DOCOL, COMMA,
     LATEST_CFA, FETCH, HIDDEN,
     RBRAC,
