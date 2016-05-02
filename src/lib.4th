@@ -523,6 +523,17 @@
         THEN
 ;
 
+( Fill u ints, starting at a, with the value b )
+: FILL          ( a u b -- )
+        -ROT OVER + SWAP ?DO
+                DUP I !
+        LOOP
+        DROP
+;
+
+: ERASE         ( a u -- )
+        0 FILL
+;
 
 ( PRINTING THE DICTIONARY ------------------------------------------------------ )
 
