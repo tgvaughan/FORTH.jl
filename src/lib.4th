@@ -8,7 +8,15 @@
 : FALSE 0 ;
 : NOT 0= ;
 
-: CELLS ; \ Allow for slightly more portable code
+ \ Allow for slightly more portable code
+: CELLS ;
+
+\ Since the smallest unit of memory in our system is 64 bits and since strings
+\ are stored as arrays of 64 bit integers, the character store/fetch words are
+\ just aliases of the standard store/fetch words.
+: C! ! ;
+: C@ @ ;
+: C, , ;
 
 : DEPTH PSP@ PSP0 @ - ;
 
@@ -383,11 +391,6 @@
 
 ( STRINGS ---------------------------------------------------------------------- )
 
-( Since the smallest unit of memory in our system is 64 bits and since strings
-  are stored as arrays of 64 bit integers, the character store/fetch words are
-  just aliases of the standard store/fetch words. )
-: C! ! ;
-: C@ @ ;
 
 ( Block copy, however, is important and novel: )
 : CMOVE ( src dest length -- )
