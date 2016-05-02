@@ -631,9 +631,33 @@
         DROP            ( at this point, the stack is: start-of-word end-of-word )
         SWAP            ( end-of-word start-of-word )
 
+        DUP >CFA @ CASE
+                DOCOL OF
+                        \ Colon definition
+                        ':' EMIT SPACE DUP ID. SPACE
+                        DUP ?IMMEDIATE IF ." IMMEDIATE " THEN CR
+                ENDOF
+                DOVAR OF
+                        \ Variable definition
+                        ." Variable " DUP ID. CR
+                        2DROP EXIT
+                ENDOF
+                DOCON OF
+                        \ Constant definition
+                        ." Constant " DUP ID. CR
+                        2DROP EXIT
+                ENDOF
+
+                \ Unknown codeword
+                ." Primitive or word with unrecognized codeword." CR 
+                DROP 2DROP EXIT
+        ENDCASE
+
         ( begin the definition with : NAME [IMMEDIATE] )
-        ':' EMIT SPACE DUP ID. SPACE
-        DUP ?IMMEDIATE IF ." IMMEDIATE " THEN CR 4 
+        ( ':' EMIT SPACE DUP ID. SPACE
+        DUP ?IMMEDIATE IF ." IMMEDIATE " THEN CR 4 )
+
+        4 SPACES
 
         >DFA            ( get the data address, ie. points after DOCOL | end-of-word start-of-data )
 
@@ -698,10 +722,4 @@
 
         2DROP           ( restore stack )
 ;
-
-
-( WELCOME MESSAGE ------------------------------------------------------------- )
-
-CR CR ."  --- TimForth initialized  --- "
-
 
