@@ -723,3 +723,8 @@
         2DROP           ( restore stack )
 ;
 
+
+( MEMORY  ------------------------------------------------------------------ )
+
+: UNUSED  ( -- cells )
+        MEMSIZE HERE @ - ;

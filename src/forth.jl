@@ -1,12 +1,12 @@
 module forth
 
 # VM mem size
-size_mem = 640*1024
+size_mem = 1000000 # 1 mega-int
 
 # Buffer sizes
-size_RS = 1024   # Return stack size
-size_PS = 1024   # Parameter stack size
-size_TIB = 1096  # Terminal input buffer size
+size_RS = 1000   # Return stack size
+size_PS = 1000   # Parameter stack size
+size_TIB = 1000  # Terminal input buffer size
 
 # The mem array constitutes the memory of the VM. It has the following geography:
 #
@@ -231,12 +231,11 @@ defConst("DOCON", DOCON)
 defConst("DOVAR", DOVAR)
 
 defConst("DICT", DICT)
+defConst("MEMSIZE", size_mem)
 
 F_IMMED = defConst("F_IMMED", 128)
 F_HIDDEN = defConst("F_HIDDEN", 256)
 F_LENMASK = defConst("F_LENMASK", 127)
-
-
 
 # Basic forth primitives
 
