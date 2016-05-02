@@ -7,14 +7,14 @@ carefully about how forth works.
 
 This package owes a massive debt to the existence of the literate programming
 project [JonesForth] (https://rwmj.wordpress.com/2010/08/07/jonesforth-git-repository/),
-which I believe I've had more fun reading than any other piece of code. To a
-large degree my package is simply a port of that project from x86 assembly +
-forth to julia + forth, although the mapping is in a few places non-trivial due
-to the fact that julia is a high level language.  A huge proportion (say 80%)
-of the library code in src/lib.4th is directly copied from JonesForth.  (The
-fact that it was possible to reuse this code was satisfying in its own right!)
-I've added some additional core definitions and modified some of the others to
-be a little bit closer to the behaviour of ANS forth (or at least FORTH 83).
+which was an amazing read. To a large degree my package is simply a port of
+that project from x86 assembly + forth to julia + forth, although the mapping
+is in a few places non-trivial due to the fact that julia is a high level
+language.  A huge proportion (say 80%) of the library code in src/lib.4th is
+directly copied from JonesForth.  (The fact that it was possible to reuse this
+code was satisfying in its own right!) I've added some additional core
+definitions and modified some of the others to be a little bit closer to the
+behaviour of ANS forth (or at least FORTH 83).
 
 There's quite a lot to say about the implementation, especially due to its
 high-level grounding, but that will have to wait for another time.
