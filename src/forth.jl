@@ -219,6 +219,25 @@ EXIT = defPrimWord("EXIT", () -> begin
     return NEXT
 end)
 
+# Dictionary entries for core built-in variables, constants
+
+HERE_CFA = defExistingVar("HERE", HERE)
+LATEST_CFA = defExistingVar("LATEST", LATEST)
+PSP0_CFA = defExistingVar("PSP0", PSP0)
+RSP0_CFA = defExistingVar("RSP0", RSP0)
+
+defConst("DOCOL", DOCOL)
+defConst("DOCON", DOCON)
+defConst("DOVAR", DOVAR)
+
+defConst("DICT", DICT)
+
+F_IMMED = defConst("F_IMMED", 128)
+F_HIDDEN = defConst("F_HIDDEN", 256)
+F_LENMASK = defConst("F_LENMASK", 127)
+
+
+
 # Basic forth primitives
 
 DROP = defPrimWord("DROP", () -> begin
@@ -512,27 +531,6 @@ SUBSTORE = defPrimWord("-!", () -> begin
 end)
 
 
-# Built-in variables
-
-HERE_CFA = defExistingVar("HERE", HERE)
-LATEST_CFA = defExistingVar("LATEST", LATEST)
-PSP0_CFA = defExistingVar("PSP0", PSP0)
-RSP0_CFA = defExistingVar("RSP0", RSP0)
-STATE, STATE_CFA = defNewVar("STATE", 0)
-BASE, BASE_CFA = defNewVar("BASE", 10)
-
-# Constants
-
-defConst("DOCOL", DOCOL)
-defConst("DOCON", DOCON)
-defConst("DOVAR", DOVAR)
-
-defConst("DICT", DICT)
-
-F_IMMED = defConst("F_IMMED", 128)
-F_HIDDEN = defConst("F_HIDDEN", 256)
-F_LENMASK = defConst("F_LENMASK", 127)
-
 # Return Stack
 
 TOR = defPrimWord(">R", () -> begin
@@ -688,6 +686,7 @@ WORD = defPrimWord("WORD", () -> begin
     return NEXT
 end)
 
+BASE, BASE_CFA = defNewVar("BASE", 10)
 NUMBER = defPrimWord("NUMBER", () -> begin
 
     wordLen = popPS()
@@ -787,6 +786,8 @@ COMMA = defPrimWord(",", () -> begin
 
     return NEXT
 end)
+
+STATE, STATE_CFA = defNewVar("STATE", 0)
 
 LBRAC = defPrimWord("[", () -> begin
     mem[STATE] = 0
