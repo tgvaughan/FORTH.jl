@@ -768,6 +768,8 @@ end)
 
 # Compilation
 
+STATE, STATE_CFA = defNewVar("STATE", 0)
+
 HEADER = defPrimWord("HEADER", () -> begin
 
     wordLen = popPS()
@@ -785,8 +787,6 @@ COMMA = defPrimWord(",", () -> begin
 
     return NEXT
 end)
-
-STATE, STATE_CFA = defNewVar("STATE", 0)
 
 LBRAC = defPrimWord("[", () -> begin
     mem[STATE] = 0
@@ -809,6 +809,11 @@ HIDE = defWord("HIDE",
     FIND,
     HIDDEN,
     EXIT])
+
+CREATE = defWord("CREATE",
+    [WORD,
+    HEADER,
+    LIT, DOVAR, COMMA, EXIT]);
 
 COLON = defWord(":",
     [WORD,

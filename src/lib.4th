@@ -478,18 +478,13 @@
         ['] EXIT ,      ( append the codeword EXIT )
 ;
 
-: ALLOT         ( n -- addr )
-        HERE @ SWAP     ( here n )
+: ALLOT         ( n -- )
         HERE +!         ( adds n to HERE, after this the old value of HERE is still on the stack )
 ;
 
 : VARIABLE
+        CREATE
         1 CELLS ALLOT   ( allocate 1 cell of memory, push the pointer to this memory )
-        WORD HEADER     ( make the dictionary entry (the name follows VARIABLE) )
-        DOCOL ,         ( append DOCOL (the codeword field of this word) )
-        ['] LIT ,         ( append the codeword LIT )
-        ,               ( append the pointer to the new memory )
-        ['] EXIT ,        ( append the codeword EXIT )
 ;
 
 
