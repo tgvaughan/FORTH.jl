@@ -810,11 +810,6 @@ HIDE = defWord("HIDE",
     HIDDEN,
     EXIT])
 
-CREATE = defWord("CREATE",
-    [WORD,
-    HEADER,
-    LIT, DOVAR, COMMA, EXIT]);
-
 COLON = defWord(":",
     [WORD,
     HEADER,
@@ -841,6 +836,28 @@ TICK = defWord("'",
 BTICK = defWord("[']",
     [FROMR, DUP, INCR, TOR, FETCH, EXIT])
 
+# CREATE and DOES>
+
+CREATE = defWord("CREATE",
+    [WORD,
+    HEADER,
+    LIT, DOVAR, COMMA, EXIT]);
+
+DODOES = defPrim(() -> begin
+    pushRS(reg.IP)
+    reg.IP = reg.W + 1
+    return NEXT
+end, name="DOCOL")
+
+defConst("DODOES", DODOES)
+
+FROMDOES_PAREN = defWord("(DOES>)",
+    [DODOES, LAST, FETCH, TOCFA, STORE, EXIT])
+
+FROMDOES = defWord("DOES>",
+    [BTICK, FROMDOES_PAREN, COMMA, BTICK, EXIT, COMMA,
+    BTICK, LIT, COMMA, LATEST, FETCH, TODFA, COMMA], flags=F_IMMED)
+    
 
 # Strings
 
