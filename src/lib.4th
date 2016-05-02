@@ -449,22 +449,20 @@
 ;
 
 : ." IMMEDIATE          ( -- )
-        STATE @ IF      ( compiling? )
-                [COMPILE] S"    ( read the string, and compile LITSTRING, etc. )
-                ['] TELL ,        ( compile the final TELL )
-        ELSE
-                ( In immediate mode, just read characters and print them until we get
-                  to the ending double quote. )
-                KEY DROP
-                BEGIN
-                        KEY
-                        DUP '"' = IF
-                                DROP    ( drop the double quote character )
-                                EXIT    ( return from this function )
-                        THEN
-                        EMIT
-                AGAIN
-        THEN
+        [COMPILE] S"    ( read the string, and compile LITSTRING, etc. )
+        ['] TELL ,      ( compile the final TELL )
+;
+
+: .( 
+        KEY DROP
+        BEGIN
+                KEY
+                DUP ')' = IF
+                        DROP    ( drop the double quote character )
+                        EXIT    ( return from this function )
+                THEN
+                EMIT
+        AGAIN
 ;
 
 
