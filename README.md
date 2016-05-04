@@ -2,7 +2,7 @@
 
 A hobby implementation of a FORTH-like system atop the Julia scientific
 computing language.  It will almost certainly never be useful for any purpose
-besides, that which it has already fulfilled: forcing me to think quite
+besides that which it has already fulfilled: forcing me to think quite
 carefully about how forth works. 
 
 This package owes a massive debt to the existence of the literate programming
