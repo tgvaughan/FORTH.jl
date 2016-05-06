@@ -626,23 +626,9 @@ WORD = defPrimWord("WORD", () -> begin
     eof_char = Char(EOF)
     c = eof_char
 
-    skip_to_end = false
     while true
-
         callPrim(mem[KEY])
         c = Char(popPS())
-
-        if c == '\\'
-            skip_to_end = true
-            continue
-        end
-
-        if skip_to_end
-            if c == '\n' || c == eof_char
-                skip_to_end = false
-            end
-            continue
-        end
 
         if c == ' ' || c == '\t'
             continue
@@ -852,7 +838,7 @@ end, name="DOCOL")
 defConst("DODOES", DODOES)
 
 FROMDOES_PAREN = defWord("(DOES>)",
-    [DODOES, LAST, FETCH, TOCFA, STORE, EXIT])
+    [DODOES, LATEST, FETCH, TOCFA, STORE, EXIT])
 
 FROMDOES = defWord("DOES>",
     [BTICK, FROMDOES_PAREN, COMMA, BTICK, EXIT, COMMA,

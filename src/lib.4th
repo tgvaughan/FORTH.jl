@@ -1,3 +1,10 @@
+: \ IMMEDIATE
+        KEY
+        10 = 0BRANCH [ -5 , ]
+; \ We can now comment!
+
+\ BASIC DEFINITIONS  ----------------------------------------------------------------------
+
 : / /MOD SWAP DROP ;
 : MOD /MOD DROP ;
 : */ -ROT * SWAP / ;
@@ -8,7 +15,8 @@
 : FALSE 0 ;
 : NOT 0= ;
 
- \ Allow for slightly more portable code
+\ Translate a number of cells into memory units
+\ (in our case 1 cell = 1 memory unit)
 : CELLS ;
 
 \ Since the smallest unit of memory in our system is 64 bits and since strings
@@ -25,17 +33,10 @@
 
 : LITERAL IMMEDIATE ['] LIT , , ;
 
-: ':' [ CHAR : ] LITERAL ;
-: ';' [ CHAR ; ] LITERAL ;
-: '(' [ CHAR ( ] LITERAL ;
-: ')' [ CHAR ) ] LITERAL ;
-: '<' [ CHAR < ] LITERAL ;
-: '>' [ CHAR > ] LITERAL ;
-: '"' [ CHAR " ] LITERAL ;
-: 'A' [ CHAR A ] LITERAL ;
-: '0' [ CHAR 0 ] LITERAL ;
-: '-' [ CHAR - ] LITERAL ;
-: '.' [ CHAR . ] LITERAL ;
+: [CHAR] IMMEDIATE
+    CHAR
+    ['] LIT , ,
+;
 
 : CR '\n' emit ;
 : SPACE BL emit ;
@@ -215,11 +216,11 @@
         1               \ allowed nested parens by keeping track of depth
         BEGIN
                 KEY             \ read next character
-                DUP '(' = IF    \ open paren?
+                DUP [CHAR] ( = IF    \ open paren?
                         DROP            \ drop the open paren
                         1+              \ depth increases
                 ELSE
-                        ')' = IF        \ close paren?
+                        [CHAR] ) = IF        \ close paren?
                                 1-              \ depth decreases
                         THEN
                 THEN
@@ -291,10 +292,10 @@
 
         ( print the remainder )
         DUP 10 < IF
-                '0'             ( decimal digits 0..9 )
+                [CHAR] 0             ( decimal digits 0..9 )
         ELSE
                 10 -            ( hex and beyond digits A..Z )
-                'A'
+                [CHAR] A
         THEN
         +
         EMIT
@@ -347,7 +348,7 @@
         SWAP            ( u flag )
 
         IF                      ( was it negative? print the - character )
-                '-' EMIT
+                [CHAR] - EMIT
         THEN
 
         U.
@@ -356,7 +357,7 @@
 : . 0 .R SPACE ;
 
 : .S            ( -- )
-        '<' EMIT DEPTH U. '>' EMIT SPACE
+        [CHAR] < EMIT DEPTH U. [CHAR] > EMIT SPACE
         PSP0 @ 1+
         BEGIN
                 DUP PSP@ 2 - <=
@@ -425,7 +426,7 @@
                 KEY DROP
                 BEGIN
                         KEY             ( get next character of the string )
-                        DUP '"' <>
+                        DUP [CHAR] " <>
                 WHILE
                         C,              ( copy character )
                 REPEAT
@@ -439,7 +440,7 @@
                 KEY DROP
                 BEGIN
                         KEY
-                        DUP '"' <>
+                        DUP [CHAR] " <>
                 WHILE
                         OVER C!         ( save next character )
                         1+              ( increment address )
@@ -460,7 +461,7 @@
         KEY DROP
         BEGIN
                 KEY
-                DUP ')' = IF
+                DUP [CHAR] ) = IF
                         DROP    ( drop the double quote character )
                         EXIT    ( return from this function )
                 THEN
@@ -641,7 +642,7 @@
         DUP >CFA @ CASE
                 DOCOL OF
                         \ Colon definition
-                        ':' EMIT SPACE DUP ID. SPACE
+                        [CHAR] : EMIT SPACE DUP ID. SPACE
                         DUP ?IMMEDIATE IF ." IMMEDIATE " THEN CR
                 ENDOF
                 DOVAR OF
@@ -661,7 +662,7 @@
         ENDCASE
 
         ( begin the definition with : NAME [IMMEDIATE] )
-        ( ':' EMIT SPACE DUP ID. SPACE
+        ( [CHAR] : EMIT SPACE DUP ID. SPACE
         DUP ?IMMEDIATE IF ." IMMEDIATE " THEN CR 4 )
 
         4 SPACES
@@ -680,11 +681,11 @@
                         .                       ( and print it )
                 ENDOF
                 ['] LITSTRING OF          ( is it LITSTRING ? )
-                        [ CHAR S ] LITERAL EMIT '"' EMIT SPACE ( print S"<space> )
+                        [CHAR] S EMIT [CHAR] " EMIT SPACE ( print S"<space> )
                         1+ DUP @                ( get the length word )
                         SWAP 1+ SWAP            ( end start+1 length )
                         2DUP TELL               ( print the string )
-                        '"' EMIT SPACE          ( finish the string with a final quote )
+                        [CHAR] " EMIT SPACE          ( finish the string with a final quote )
                         +                       ( end start+1+len, aligned )
                         1-                     ( because we're about to add 4 below )
                 ENDOF
@@ -725,7 +726,7 @@
                 1+             ( end start+1 )
         REPEAT
 
-        ';' EMIT CR
+        [CHAR] ; EMIT CR
 
         2DROP           ( restore stack )
 ;
