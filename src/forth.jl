@@ -591,82 +591,26 @@ end)
 sources = Array{Any,1}()
 currentSource() = sources[length(sources)]
 
-defConst("TIB", TIB)
-NUMTIB, NUMTIB_CFA = defNewVar("#TIB", 0)
-TOIN, TOIN_CFA = defNewVar(">IN", 0)
 EOF = defConst("EOF", 4)
-
-KEY = defPrimWord("KEY", () -> begin
-    if mem[TOIN] >= mem[NUMTIB]
-        mem[TOIN] = 0
-
-        if !eof(currentSource())
-            line = readline(currentSource())
-            mem[NUMTIB] = length(line)
-            putString(line, TIB)
-        else
-            mem[NUMTIB] = 1
-            mem[TIB] = EOF
-        end
-    end
-
-    pushPS(mem[TIB + mem[TOIN]])
-    mem[TOIN] += 1
-
-    return NEXT
-end)
 
 EMIT = defPrimWord("EMIT", () -> begin
     print(Char(popPS()))
     return NEXT
 end)
 
-WORD = defPrimWord("WORD", () -> begin
+SPAN, SPAN_CFA = defNewVar("SPAN", 0)
+EXPECT = defPrimWord("EXPECT", () -> begin
+    maxLen = popPS()
+    addr = popPS()
 
-    eof_char = Char(EOF)
-    c = eof_char
-
-    while true
-        callPrim(mem[KEY])
-        c = Char(popPS())
-
-        if c == ' ' || c == '\t'
-            continue
-        end
-
-        break
+    if !eof(currentSource())
+        line = readline(currentSource())
+        mem[SPAN] = max(length(line), maxLen)
+        putString(line[1:mem[SPAN]], addr)
+    else
+        mem[SPAN] = 1
+        mem[addr] = EOF
     end
-
-    wordAddr = mem[HERE]
-    offset = 0
-
-    if c == '\n' || c == eof_char
-        # Treat newline as a special word
-
-        mem[wordAddr + offset] = Int64(c)
-        pushPS(wordAddr)
-        pushPS(1)
-        return NEXT
-    end
-
-    while true
-        mem[wordAddr + offset] = Int64(c)
-        offset += 1
-
-        callPrim(mem[KEY])
-        c = Char(popPS())
-
-        if c == ' ' || c == '\t' || c == '\n' || c == eof_char
-            # Rewind KEY
-            mem[TOIN] -= 1
-            break
-        end
-    end
-
-    wordLen = offset
-
-    pushPS(wordAddr)
-    pushPS(wordLen)
 
     return NEXT
 end)
@@ -674,17 +618,12 @@ end)
 BASE, BASE_CFA = defNewVar("BASE", 10)
 NUMBER = defPrimWord("NUMBER", () -> begin
 
-    wordLen = popPS()
-    wordAddr = popPS()
+    wordAddr = popPS()+1
+    wordLen = mem[wordAddr-1]
 
     s = getString(wordAddr, wordLen)
 
-    try
-        pushPS(parse(Int64, s, mem[BASE]))
-        pushPS(0)
-    catch
-        pushPS(1) # Error indication
-    end
+    pushPS(parse(Int64, s, mem[BASE]))
 
     return NEXT
 end)
@@ -693,8 +632,9 @@ end)
 
 FIND = defPrimWord("FIND", () -> begin
 
-    wordLen = popPS()
-    wordAddr = popPS()
+    countedAddr = popPS()
+    wordAddr = countedAddr + 1
+    wordLen = mem[countedAddr]
     word = lowercase(getString(wordAddr, wordLen))
 
     latest = LATEST
@@ -752,14 +692,113 @@ ZBRANCH = defPrimWord("0BRANCH", () -> begin
     return NEXT
 end)
 
-# Compilation
+# Strings
+
+LITSTRING = defPrimWord("LITSTRING", () -> begin
+    len = mem[reg.IP]
+    reg.IP += 1
+    pushPS(reg.IP)
+    pushPS(len)
+    reg.IP += len
+
+    return NEXT
+end)
+
+TYPE = defPrimWord("TYPE", () -> begin
+    len = popPS()
+    addr = popPS()
+    str = getString(addr, len)
+    print(str)
+    return NEXT
+end)
+
+# Outer interpreter
+
+defConst("TIB", TIB)
+NUMTIB, NUMTIB_CFA = defNewVar("#TIB", 0)
+TOIN, TOIN_CFA = defNewVar(">IN", 0)
+
+QUERY = defWord("QUERY",
+    [LIT, TIB, LIT, 80, EXPECT,
+    LIT, SPAN, FETCH, NUMTIB, STORE,
+    LIT, 0, TOIN, STORE,
+    EXIT])
+
+EXECUTE = defPrimWord("EXECUTE", () -> begin
+    reg.W = popPS()
+    return mem[reg.W]
+end)
 
 STATE, STATE_CFA = defNewVar("STATE", 0)
 
-HEADER = defPrimWord("HEADER", () -> begin
+INTERPRET = defWord("INTERPRET",
+    [LIT, 32, WORD, # Read next space-delimited word
 
+    DUP, FETCH, ZEQ, ZBRANCH, 3,
+        DROP, EXIT, # Exit if TIB is exhausted
+    
+    STATE_CFA, FETCH, ZBRANCH, 26,
+        # Compiling
+        DUP, FIND, ZBRANCH, 17,
+
+            # Found word. 
+            DUP, TOCFA, SWAP, INCR, FETCH, LIT, F_IMMED, AND, ZBRANCH, 4,
+                # Immediate: Execute!
+                EXECUTE, BRANCH, -30,
+
+                # Not immediate: Compile!
+                COMMA, BRANCH, -33,
+
+            # No word found, parse number
+            NUMBER, BTICK, LIT, COMMA, BRANCH, -39,
+        
+       # Interpreting
+        DUP, FIND, ZBRANCH, 5,
+
+            # Found word. Execute!
+            TOCFA, EXECUTE, BRANCH, -47,
+
+            # No word found, parse number and leave on stack
+            NUMBER, BRANCH, -50,
+    EXIT]
+)
+
+PROMPT = defPrimWord("PROMPT", () -> begin
+    if (mem[STATE] == 0 and currentSource() == STDIN)
+        println(" ok")
+    end
+end)
+
+QUIT = defWord("QUIT",
+    [RSP0_CFA, RSPSTORE,
+    QUERY,
+    INTERPRET, PROMPT
+    BRANCH,-3])
+
+BYE = defPrimWord("BYE", () -> begin
+    return 0
+end)
+
+INCLUDE = defPrimWord("INCLUDE", () -> begin
+    callPrim(mem[WORD])
     wordLen = popPS()
     wordAddr = popPS()
+    word = getString(wordAddr, wordLen)
+
+    push!(sources, open(word, "r"))
+
+    # Clear input buffer
+    mem[NUMTIB] = 0
+
+    return NEXT
+end)
+
+# Compilation
+
+HEADER = defPrimWord("HEADER", () -> begin
+
+    wordAddr = popPS()+1
+    wordLen = mem[wordAddr-1]
     word = getString(wordAddr, wordLen)
 
     createHeader(word, 0)
@@ -845,146 +884,6 @@ FROMDOES = defWord("DOES>",
     BTICK, LIT, COMMA, LATEST, FETCH, TODFA, COMMA], flags=F_IMMED)
     
 
-# Strings
-
-LITSTRING = defPrimWord("LITSTRING", () -> begin
-    len = mem[reg.IP]
-    reg.IP += 1
-    pushPS(reg.IP)
-    pushPS(len)
-    reg.IP += len
-
-    return NEXT
-end)
-
-TYPE = defPrimWord("TYPE", () -> begin
-    len = popPS()
-    addr = popPS()
-    str = getString(addr, len)
-    print(str)
-    return NEXT
-end)
-
-# Outer interpreter
-
-EXECUTE = defPrimWord("EXECUTE", () -> begin
-    reg.W = popPS()
-    return mem[reg.W]
-end)
-
-type ParseError <: Exception
-    wordName::ASCIIString
-end
-Base.showerror(io::IO, ex::ParseError) = print(io, "Parse error at word: '$(ex.wordName)'.")
-
-DEBUG, DEBUG_CFA = defNewVar("DEBUG", 0)
-
-INTERPRET = defPrimWord("INTERPRET", () -> begin
-
-    callPrim(mem[WORD])
-
-    wordName = getString(mem[reg.PSP-1], mem[reg.PSP])
-    if mem[DEBUG] != 0
-        println("... ", replace(replace(wordName, "\004", "EOF"), "\n", "\\n"), " ...")
-    end
-
-    callPrim(mem[TWODUP])
-    callPrim(mem[FIND])
-
-    wordAddr = mem[reg.PSP]
-
-    if wordAddr>0
-        # Word in dictionary
-
-        isImmediate = (mem[wordAddr+1] & F_IMMED) != 0
-        callPrim(mem[TOCFA])
-
-        callPrim(mem[NROT]) # get rid of extra copy of word string details
-        popPS()
-        popPS()
-
-        if mem[STATE] == 0 || isImmediate
-            # Execute!
-            return callPrim(mem[EXECUTE])
-        else
-            # Append CFA to dictionary
-            callPrim(mem[COMMA])
-        end
-    else
-        # Not in dictionary, assume number
-
-        popPS()
-
-        callPrim(mem[NUMBER])
-
-        if popPS() != 0
-            throw(ParseError(wordName))
-        end
-
-        if mem[STATE] == 0
-            # Number already on stack!
-        else
-            # Append literal to dictionary
-            pushPS(LIT)
-            callPrim(mem[COMMA])
-            callPrim(mem[COMMA])
-        end
-    end
-
-    return NEXT
-end)
-
-QUIT = defWord("QUIT",
-    [RSP0_CFA, RSPSTORE,
-    INTERPRET,
-    BRANCH,-2])
-
-BYE = defPrimWord("BYE", () -> begin
-    return 0
-end)
-
-PROMPT = defPrimWord("PROMPT", () -> begin
-    println(" ok")
-end)
-
-NL = defPrimWord("\n", () -> begin
-    if mem[STATE] == 0 && currentSource() == STDIN
-        callPrim(mem[PROMPT])
-    end
-    return NEXT
-end, flags=F_IMMED)
-
-INCLUDE = defPrimWord("INCLUDE", () -> begin
-    callPrim(mem[WORD])
-    wordLen = popPS()
-    wordAddr = popPS()
-    word = getString(wordAddr, wordLen)
-
-    push!(sources, open(word, "r"))
-
-    # Clear input buffer
-    mem[NUMTIB] = 0
-
-    return NEXT
-end)
-
-EOF_WORD = defPrimWord("\x04", () -> begin
-    if currentSource() != STDIN
-        close(currentSource())
-    end
-
-    pop!(sources)
-
-    if length(sources)>0
-        if currentSource() == STDIN
-            callPrim(mem[PROMPT])
-        end
-
-        return NEXT
-    else
-        return 0
-    end
-end, flags=F_IMMED)
 
 #### VM loop ####
 
@@ -996,7 +895,7 @@ elseif isfile(Pkg.dir("forth/src/lib.4th"))
     initFileName = Pkg.dir("forth/src/lib.4th")
 end
 
-function run(;initialize=true)
+function run(;initialize=false)
     # Begin with STDIN as source
     push!(sources, STDIN)
 
