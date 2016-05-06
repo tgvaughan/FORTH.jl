@@ -106,4 +106,4 @@ hide *
         mandeldraw
 ;
 
-." Enter 'mandel' to draw the Mandelbrot Set."
+.( Enter 'mandel' to draw the Mandelbrot Set.)
