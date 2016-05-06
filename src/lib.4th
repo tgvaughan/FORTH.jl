@@ -33,6 +33,11 @@
 
 : LITERAL IMMEDIATE ['] LIT , , ;
 
+: CHAR
+    WORD
+    DROP @
+;
+
 : [CHAR] IMMEDIATE
     CHAR
     ['] LIT , ,
@@ -454,7 +459,7 @@
 
 : ." IMMEDIATE          ( -- )
         [COMPILE] S"    ( read the string, and compile LITSTRING, etc. )
-        ['] TELL ,      ( compile the final TELL )
+        ['] TYPE ,      ( compile the final TYPE )
 ;
 
 : .( 
@@ -468,6 +473,11 @@
                 EMIT
         AGAIN
 ;
+
+( Converts address of counted string into address of
+  start of string and length of string. )
+: COUNT ( addr1 -- addr2 n )
+        DUP 1+ SWAP @ ;
 
 
 ( CONSTANTS AND VARIABLES ------------------------------------------------------ )
@@ -621,7 +631,14 @@
 ;
 
 : SEE
-        WORD FIND       ( find the dictionary entry to decompile )
+        WORD 2DUP FIND       ( find the dictionary entry to decompile )
+
+        ?DUP 0= IF
+                ." Word '" TYPE ." ' not found in dictionary."
+                EXIT
+        THEN
+
+        -ROT 2DROP
 
         ( Now we search again, looking for the next word in the dictionary.  This gives us
           the length of the word that we will be decompiling.  (Well, mostly it does). )
@@ -684,7 +701,7 @@
                         [CHAR] S EMIT [CHAR] " EMIT SPACE ( print S"<space> )
                         1+ DUP @                ( get the length word )
                         SWAP 1+ SWAP            ( end start+1 length )
-                        2DUP TELL               ( print the string )
+                        2DUP TYPE               ( print the string )
                         [CHAR] " EMIT SPACE          ( finish the string with a final quote )
                         +                       ( end start+1+len, aligned )
                         1-                     ( because we're about to add 4 below )

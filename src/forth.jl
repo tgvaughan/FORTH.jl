@@ -857,7 +857,7 @@ LITSTRING = defPrimWord("LITSTRING", () -> begin
     return NEXT
 end)
 
-TELL = defPrimWord("TELL", () -> begin
+TYPE = defPrimWord("TYPE", () -> begin
     len = popPS()
     addr = popPS()
     str = getString(addr, len)
@@ -986,17 +986,7 @@ EOF_WORD = defPrimWord("\x04", () -> begin
     end
 end, flags=F_IMMED)
 
-# Odds and Ends
-
-CHAR = defPrimWord("CHAR", () -> begin
-    callPrim(mem[WORD])
-    wordLen = popPS()
-    wordAddr = popPS()
-    word = getString(wordAddr, wordLen)
-    pushPS(Int64(word[1]))
-
-    return NEXT
-end)
+#### VM loop ####
 
 initialized = false
 initFileName = nothing
@@ -1006,8 +996,6 @@ elseif isfile(Pkg.dir("forth/src/lib.4th"))
     initFileName = Pkg.dir("forth/src/lib.4th")
 end
 
-
-#### VM loop ####
 function run(;initialize=true)
     # Begin with STDIN as source
     push!(sources, STDIN)
