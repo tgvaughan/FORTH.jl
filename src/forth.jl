@@ -820,29 +820,30 @@ INTERPRET = defWord("INTERPRET",
     DUP, FETCH, ZE, ZBRANCH, 3,
         DROP, EXIT, # Exit if TIB is exhausted
 
-    STATE_CFA, FETCH, ZBRANCH, 28,
+    STATE_CFA, FETCH, ZBRANCH, 32,
         # Compiling
-        DUP, FIND, ZBRANCH, 17,
+        DUP, FIND, QDUP, ZBRANCH, 19,
 
             # Found word. 
+            SWAP, DROP,
             DUP, TOCFA, SWAP, INCR, FETCH, LIT, F_IMMED, AND, ZBRANCH, 4,
                 # Immediate: Execute!
-                EXECUTE, BRANCH, -30,
+                EXECUTE, BRANCH, -33,
 
                 # Not immediate: Compile!
-                COMMA, BRANCH, -33,
+                COMMA, BRANCH, -36,
 
             # No word found, parse number
-            BTICK, LIT, COMMA, NUMBER, COMMA, BRANCH, -40,
+            BTICK, LIT, COMMA, TRACE, NUMBER, COMMA, BRANCH, -44,
         
        # Interpreting
         DUP, FIND, QDUP, ZBRANCH, 7,
 
             # Found word. Execute!
-            SWAP, DROP, TOCFA, EXECUTE, BRANCH, -51,
+            SWAP, DROP, TOCFA, EXECUTE, BRANCH, -55,
 
             # No word found, parse number and leave on stack
-            NUMBER, BRANCH, -54,
+            NUMBER, BRANCH, -58,
     EXIT]
 )
 
