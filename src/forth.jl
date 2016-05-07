@@ -721,6 +721,7 @@ end)
 # Outer interpreter
 
 TRACE = defPrimWord("TRACE", () -> begin
+    println("Val: $(popPS())")
     print("RS: "); printRS()
     print("PS: "); printPS()
     print("[paused]")
@@ -825,7 +826,7 @@ INTERPRET = defWord("INTERPRET",
     DUP, FETCH, ZE, ZBRANCH, 3,
         DROP, EXIT, # Exit if TIB is exhausted
 
-    STATE_CFA, FETCH, ZBRANCH, 32,
+    STATE_CFA, FETCH, ZBRANCH, 31,
         # Compiling
         DUP, FIND, QDUP, ZBRANCH, 19,
 
@@ -839,16 +840,16 @@ INTERPRET = defWord("INTERPRET",
                 COMMA, BRANCH, -36,
 
             # No word found, parse number
-            NUMBER, BTICK, LIT, COMMA, COMMA, TRACE, BRANCH, -44,
+            NUMBER, BTICK, LIT, COMMA, COMMA, BRANCH, -43,
         
        # Interpreting
         DUP, FIND, QDUP, ZBRANCH, 7,
 
             # Found word. Execute!
-            SWAP, DROP, TOCFA, EXECUTE, BRANCH, -55,
+            SWAP, DROP, TOCFA, EXECUTE, BRANCH, -54,
 
             # No word found, parse number and leave on stack
-            NUMBER, BRANCH, -58,
+            NUMBER, BRANCH, -57,
     EXIT]
 )
 

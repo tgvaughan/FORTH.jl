@@ -1,6 +1,5 @@
 : \ IMMEDIATE
-        KEY
-        10 = 0BRANCH [ -5 , ]
+        #TIB @ >IN !
 ; \ We can now comment!
 
 \ BASIC DEFINITIONS  ----------------------------------------------------------------------
@@ -33,10 +32,7 @@
 
 : LITERAL IMMEDIATE ['] LIT , , ;
 
-: CHAR
-    BL WORD
-    DROP @
-;
+: CHAR BL WORD 1+ @ ;
 
 : [CHAR] IMMEDIATE
     CHAR
@@ -58,9 +54,6 @@
         >CFA            \ get the codeword
         ,               \ compile it
 ;
-
-: DEBUGON TRUE DEBUG ! ;
-: DEBUGOFF FALSE DEBUG ! ;
 
 \ CONTROL STRUCTURES ----------------------------------------------------------------------
 
@@ -220,11 +213,11 @@
 : ( IMMEDIATE
         1               \ allowed nested parens by keeping track of depth
         BEGIN
-                >IN #TIB >= IF      \ End of TIB?
+                >IN @ #TIB @ >= IF      \ End of TIB?
                         QUERY       \ Get next line
                 THEN
 
-                >IN @ 1 >IN +!
+                TIB >IN @ + @ 1 >IN +!
                 DUP [CHAR] ( = IF    \ open paren?
                         DROP            \ drop the open paren
                         1+              \ depth increases
