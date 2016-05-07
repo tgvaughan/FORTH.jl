@@ -805,13 +805,13 @@ INTERPRET = defWord("INTERPRET",
             NUMBER, BTICK, LIT, COMMA, BRANCH, -39,
         
        # Interpreting
-        DUP, FIND, ZBRANCH, 5,
+        DUP, FIND, QDUP, ZBRANCH, 7,
 
             # Found word. Execute!
-            TOCFA, EXECUTE, BRANCH, -47,
+            SWAP, DROP, TOCFA, EXECUTE, BRANCH, -50,
 
             # No word found, parse number and leave on stack
-            NUMBER, BRANCH, -50,
+            NUMBER, BRANCH, -53,
     EXIT]
 )
 
@@ -830,6 +830,7 @@ QUIT = defWord("QUIT",
     BRANCH,-4])
 
 BYE = defPrimWord("BYE", () -> begin
+    println("Bye!")
     return 0
 end)
 
@@ -938,25 +939,25 @@ function run(;initialize=false)
     # Everyting else is simply a consequence of this loop!
     jmp = NEXT
     while jmp != 0
-#        try
-            println("Entering prim $(getPrimName(jmp))")
+        try
+            #println("Entering prim $(getPrimName(jmp))")
             jmp = callPrim(jmp)
 
-#        catch ex
-#            showerror(STDOUT, ex)
-#            println()
-#
-#            while !isempty(sources) && currentSource() != STDIN
-#                close(pop!(sources))
-#            end
-#
-#            mem[STATE] = 0
-#            mem[NUMTIB] = 0
-#            reg.PSP = mem[PSP0]
-#            reg.RSP = mem[RSP0]
-#            reg.IP = QUIT + 1
-#            jmp = NEXT
-#        end
+        catch ex
+            showerror(STDOUT, ex)
+            println()
+
+            while !isempty(sources) && currentSource() != STDIN
+                close(pop!(sources))
+            end
+
+            mem[STATE] = 0
+            mem[NUMTIB] = 0
+            reg.PSP = mem[PSP0]
+            reg.RSP = mem[RSP0]
+            reg.IP = QUIT + 1
+            jmp = NEXT
+        end
     end
 end
 
