@@ -122,8 +122,13 @@ function defPrim(f::Function; name="nameless")
 end
 
 callPrim(addr::Int64) = primitives[-addr]()
+getPrimName(addr::Int64) = primNames[-addr]
 
 # Word creation functions
+
+F_IMMED = 128
+F_HIDDEN = 256
+F_LENMASK = 127
 
 function createHeader(name::AbstractString, flags::Int64)
     mem[mem[HERE]] = mem[LATEST]
@@ -184,10 +189,12 @@ end
 function defConst(name::AbstractString, val::Int64; flags::Int64=0)
     createHeader(name, flags)
 
+    codeWordAddr = mem[HERE]
+
     mem[mem[HERE]] = DOCON; mem[HERE] += 1
     mem[mem[HERE]] = val; mem[HERE] += 1
 
-    return val
+    return codeWordAddr
 end
 
 # Threading Primitives (inner interpreter)
@@ -233,9 +240,9 @@ defConst("DOVAR", DOVAR)
 defConst("DICT", DICT)
 defConst("MEMSIZE", size_mem)
 
-F_IMMED = defConst("F_IMMED", 128)
-F_HIDDEN = defConst("F_HIDDEN", 256)
-F_LENMASK = defConst("F_LENMASK", 127)
+F_IMMED_CFA = defConst("F_IMMED", F_IMMED)
+F_HIDDEN_CFA = defConst("F_HIDDEN", F_HIDDEN)
+F_LENMASK_CFA = defConst("F_LENMASK", F_LENMASK)
 
 # Basic forth primitives
 
@@ -394,14 +401,14 @@ TWODIV = defPrimWord("2/", () -> begin
     return NEXT
 end)
 
-EQU = defPrimWord("=", () -> begin
+EQ = defPrimWord("=", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a==b ? -1 : 0)
     return NEXT
 end)
 
-NEQU = defPrimWord("<>", () -> begin
+NE = defPrimWord("<>", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a!=b ? -1 : 0)
@@ -436,12 +443,12 @@ GE = defPrimWord(">=", () -> begin
     return NEXT
 end)
 
-ZEQU = defPrimWord("0=", () -> begin
+ZE = defPrimWord("0=", () -> begin
     pushPS(popPS() == 0 ? -1 : 0)
     return NEXT
 end)
 
-ZNEQU = defPrimWord("0<>", () -> begin
+ZNE = defPrimWord("0<>", () -> begin
     pushPS(popPS() != 0 ? -1 : 0)
     return NEXT
 end)
@@ -591,7 +598,7 @@ end)
 sources = Array{Any,1}()
 currentSource() = sources[length(sources)]
 
-EOF = defConst("EOF", 4)
+EOF_CFA = defConst("EOF", 4)
 
 EMIT = defPrimWord("EMIT", () -> begin
     print(Char(popPS()))
@@ -604,8 +611,8 @@ EXPECT = defPrimWord("EXPECT", () -> begin
     addr = popPS()
 
     if !eof(currentSource())
-        line = readline(currentSource())
-        mem[SPAN] = max(length(line), maxLen)
+        line = chomp(readline(currentSource()))
+        mem[SPAN] = min(length(line), maxLen)
         putString(line[1:mem[SPAN]], addr)
     else
         mem[SPAN] = 1
@@ -617,7 +624,6 @@ end)
 
 BASE, BASE_CFA = defNewVar("BASE", 10)
 NUMBER = defPrimWord("NUMBER", () -> begin
-
     wordAddr = popPS()+1
     wordLen = mem[wordAddr-1]
 
@@ -714,19 +720,65 @@ end)
 
 # Outer interpreter
 
-defConst("TIB", TIB)
-NUMTIB, NUMTIB_CFA = defNewVar("#TIB", 0)
-TOIN, TOIN_CFA = defNewVar(">IN", 0)
+TRACE = defPrimWord("TRACE", () -> begin
+    print("RS: "); printRS()
+    print("PS: "); printPS()
+    print("[paused]")
+    readline()
 
-QUERY = defWord("QUERY",
-    [LIT, TIB, LIT, 80, EXPECT,
-    LIT, SPAN, FETCH, NUMTIB, STORE,
-    LIT, 0, TOIN, STORE,
-    EXIT])
+    return NEXT
+end)
+
+COMMA = defPrimWord(",", () -> begin
+    mem[mem[HERE]] = popPS()
+    mem[HERE] += 1
+
+    return NEXT
+end)
+
+BTICK = defWord("[']",
+    [FROMR, DUP, INCR, TOR, FETCH, EXIT])
 
 EXECUTE = defPrimWord("EXECUTE", () -> begin
     reg.W = popPS()
     return mem[reg.W]
+end)
+
+TIB_CFA = defConst("TIB", TIB)
+NUMTIB, NUMTIB_CFA = defNewVar("#TIB", 0)
+TOIN, TOIN_CFA = defNewVar(">IN", 0)
+
+QUERY = defWord("QUERY",
+    [TIB_CFA, LIT, 80, EXPECT,
+    SPAN_CFA, FETCH, NUMTIB_CFA, STORE,
+    LIT, 0, TOIN_CFA, STORE,
+    EXIT])
+
+WORD = defPrimWord("WORD", () -> begin
+    delim = popPS()
+
+    # Chew up initial occurrences of delim
+    while (mem[TOIN]<mem[NUMTIB] && mem[TIB+mem[TOIN]] == delim)
+        mem[TOIN] += 1
+    end
+
+    countAddr = mem[HERE]
+    addr = mem[HERE]+1
+
+    # Start reading in word
+    count = 0
+    while (mem[TOIN]<mem[NUMTIB] && mem[TIB+mem[TOIN]] != delim)
+        mem[addr] = mem[TIB+mem[TOIN]]
+        count += 1
+        addr += 1
+        mem[TOIN] += 1
+    end
+
+    # Record count
+    mem[countAddr] = count
+    pushPS(countAddr)
+
+    return NEXT
 end)
 
 STATE, STATE_CFA = defNewVar("STATE", 0)
@@ -734,10 +786,10 @@ STATE, STATE_CFA = defNewVar("STATE", 0)
 INTERPRET = defWord("INTERPRET",
     [LIT, 32, WORD, # Read next space-delimited word
 
-    DUP, FETCH, ZEQ, ZBRANCH, 3,
+    DUP, FETCH, ZE, ZBRANCH, 3,
         DROP, EXIT, # Exit if TIB is exhausted
-    
-    STATE_CFA, FETCH, ZBRANCH, 26,
+
+    STATE_CFA, FETCH, ZBRANCH, 27,
         # Compiling
         DUP, FIND, ZBRANCH, 17,
 
@@ -764,16 +816,18 @@ INTERPRET = defWord("INTERPRET",
 )
 
 PROMPT = defPrimWord("PROMPT", () -> begin
-    if (mem[STATE] == 0 and currentSource() == STDIN)
+    if (mem[STATE] == 0 && currentSource() == STDIN)
         println(" ok")
     end
+
+    return NEXT
 end)
 
 QUIT = defWord("QUIT",
     [RSP0_CFA, RSPSTORE,
     QUERY,
-    INTERPRET, PROMPT
-    BRANCH,-3])
+    INTERPRET, PROMPT,
+    BRANCH,-4])
 
 BYE = defPrimWord("BYE", () -> begin
     return 0
@@ -802,13 +856,6 @@ HEADER = defPrimWord("HEADER", () -> begin
     word = getString(wordAddr, wordLen)
 
     createHeader(word, 0)
-
-    return NEXT
-end)
-
-COMMA = defPrimWord(",", () -> begin
-    mem[mem[HERE]] = popPS()
-    mem[HERE] += 1
 
     return NEXT
 end)
@@ -858,32 +905,6 @@ end, flags=F_IMMED)
 TICK = defWord("'",
     [WORD, FIND, TOCFA, EXIT])
 
-BTICK = defWord("[']",
-    [FROMR, DUP, INCR, TOR, FETCH, EXIT])
-
-# CREATE and DOES>
-
-CREATE = defWord("CREATE",
-    [WORD,
-    HEADER,
-    LIT, DOVAR, COMMA, EXIT]);
-
-DODOES = defPrim(() -> begin
-    pushRS(reg.IP)
-    reg.IP = reg.W + 1
-    return NEXT
-end, name="DOCOL")
-
-defConst("DODOES", DODOES)
-
-FROMDOES_PAREN = defWord("(DOES>)",
-    [DODOES, LATEST, FETCH, TOCFA, STORE, EXIT])
-
-FROMDOES = defWord("DOES>",
-    [BTICK, FROMDOES_PAREN, COMMA, BTICK, EXIT, COMMA,
-    BTICK, LIT, COMMA, LATEST, FETCH, TODFA, COMMA], flags=F_IMMED)
-    
-
 
 #### VM loop ####
 
@@ -917,28 +938,25 @@ function run(;initialize=false)
     # Everyting else is simply a consequence of this loop!
     jmp = NEXT
     while jmp != 0
-        try
-            if mem[DEBUG] != 0
-                println("Evaluating prim ", jmp," ", primNames[-jmp])
-            end
-
+#        try
+            println("Entering prim $(getPrimName(jmp))")
             jmp = callPrim(jmp)
 
-        catch ex
-            showerror(STDOUT, ex)
-            println()
-
-            while !isempty(sources) && currentSource() != STDIN
-                close(pop!(sources))
-            end
-
-            mem[STATE] = 0
-            mem[NUMTIB] = 0
-            reg.PSP = mem[PSP0]
-            reg.RSP = mem[RSP0]
-            reg.IP = QUIT + 1
-            jmp = NEXT
-        end
+#        catch ex
+#            showerror(STDOUT, ex)
+#            println()
+#
+#            while !isempty(sources) && currentSource() != STDIN
+#                close(pop!(sources))
+#            end
+#
+#            mem[STATE] = 0
+#            mem[NUMTIB] = 0
+#            reg.PSP = mem[PSP0]
+#            reg.RSP = mem[RSP0]
+#            reg.IP = QUIT + 1
+#            jmp = NEXT
+#        end
     end
 end
 
