@@ -679,7 +679,7 @@ TOCFA = defPrimWord(">CFA", () -> begin
     return NEXT
 end)
 
-TODFA = defWord(">DFA", [TOCFA, INCR, EXIT])
+TOPFA = defWord(">PFA", [TOCFA, INCR, EXIT])
 
 # Branching
 
@@ -767,16 +767,47 @@ WORD = defPrimWord("WORD", () -> begin
 
     # Start reading in word
     count = 0
-    while (mem[TOIN]<mem[NUMTIB] && mem[TIB+mem[TOIN]] != delim)
+    while (mem[TOIN]<mem[NUMTIB])
         mem[addr] = mem[TIB+mem[TOIN]]
+        mem[TOIN] += 1
+
+        if (mem[addr] == delim)
+            break
+        end
+
         count += 1
         addr += 1
-        mem[TOIN] += 1
     end
 
     # Record count
     mem[countAddr] = count
     pushPS(countAddr)
+
+    return NEXT
+end)
+
+PARSE = defPrimWord("PARSE", () -> begin
+    delim = popPS()
+
+    # Chew up initial occurrences of delim
+    addr = mem[HERE]
+
+    # Start reading input stream
+    count = 0
+    while (mem[TOIN]<mem[NUMTIB])
+        mem[addr] = mem[TIB+mem[TOIN]]
+        mem[TOIN] += 1
+
+        if (mem[addr] == delim)
+            break
+        end
+
+        count += 1
+        addr += 1
+    end
+
+    pushPS(addr)
+    pushPS(count)
 
     return NEXT
 end)
@@ -789,7 +820,7 @@ INTERPRET = defWord("INTERPRET",
     DUP, FETCH, ZE, ZBRANCH, 3,
         DROP, EXIT, # Exit if TIB is exhausted
 
-    STATE_CFA, FETCH, ZBRANCH, 27,
+    STATE_CFA, FETCH, ZBRANCH, 28,
         # Compiling
         DUP, FIND, ZBRANCH, 17,
 
@@ -802,16 +833,16 @@ INTERPRET = defWord("INTERPRET",
                 COMMA, BRANCH, -33,
 
             # No word found, parse number
-            NUMBER, BTICK, LIT, COMMA, BRANCH, -39,
+            BTICK, LIT, COMMA, NUMBER, COMMA, BRANCH, -40,
         
        # Interpreting
         DUP, FIND, QDUP, ZBRANCH, 7,
 
             # Found word. Execute!
-            SWAP, DROP, TOCFA, EXECUTE, BRANCH, -50,
+            SWAP, DROP, TOCFA, EXECUTE, BRANCH, -51,
 
             # No word found, parse number and leave on stack
-            NUMBER, BRANCH, -53,
+            NUMBER, BRANCH, -54,
     EXIT]
 )
 
@@ -835,9 +866,10 @@ BYE = defPrimWord("BYE", () -> begin
 end)
 
 INCLUDE = defPrimWord("INCLUDE", () -> begin
+    pushPS(32)
     callPrim(mem[WORD])
-    wordLen = popPS()
-    wordAddr = popPS()
+    wordAddr = popPS()+1
+    wordLen = mem[wordAddr-1]
     word = getString(wordAddr, wordLen)
 
     push!(sources, open(word, "r"))
@@ -851,7 +883,6 @@ end)
 # Compilation
 
 HEADER = defPrimWord("HEADER", () -> begin
-
     wordAddr = popPS()+1
     wordLen = mem[wordAddr-1]
     word = getString(wordAddr, wordLen)
@@ -878,13 +909,13 @@ HIDDEN = defPrimWord("HIDDEN", () -> begin
 end)
 
 HIDE = defWord("HIDE",
-    [WORD,
+    [LIT, 32, WORD,
     FIND,
     HIDDEN,
     EXIT])
 
 COLON = defWord(":",
-    [WORD,
+    [LIT, 32, WORD,
     HEADER,
     LIT, DOCOL, COMMA,
     LATEST_CFA, FETCH, HIDDEN,
@@ -904,7 +935,7 @@ IMMEDIATE = defPrimWord("IMMEDIATE", () -> begin
 end, flags=F_IMMED)
 
 TICK = defWord("'",
-    [WORD, FIND, TOCFA, EXIT])
+    [LIT, 32, WORD, FIND, TOCFA, EXIT])
 
 
 #### VM loop ####

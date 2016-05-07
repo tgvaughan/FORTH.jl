@@ -34,7 +34,7 @@
 : LITERAL IMMEDIATE ['] LIT , , ;
 
 : CHAR
-    WORD
+    BL WORD
     DROP @
 ;
 
@@ -47,7 +47,7 @@
 : SPACE BL emit ;
 
 : [COMPILE] IMMEDIATE
-        WORD            \ get the next word
+        BL WORD         \ get the next word
         FIND            \ find it in the dictionary
         >CFA            \ get its codeword
         ,               \ and compile that
@@ -220,7 +220,11 @@
 : ( IMMEDIATE
         1               \ allowed nested parens by keeping track of depth
         BEGIN
-                KEY             \ read next character
+                >IN #TIB >= IF      \ End of TIB?
+                        QUERY       \ Get next line
+                THEN
+
+                >IN @ 1 >IN +!
                 DUP [CHAR] ( = IF    \ open paren?
                         DROP            \ drop the open paren
                         1+              \ depth increases
@@ -483,7 +487,7 @@
 ( CONSTANTS AND VARIABLES ------------------------------------------------------ )
 
 : CONSTANT
-        WORD HEADER     ( make dictionary entry (the name follows CONSTANT) )
+        BL WORD HEADER  ( make dictionary entry (the name follows CONSTANT) )
         DOCOL ,         ( append DOCOL (the codeword field of this word) )
         ['] LIT ,       ( append the codeword LIT )
         ,               ( append the value on the top of the stack )
@@ -501,7 +505,7 @@
 
 
 : VALUE         ( n -- )
-        WORD HEADER     ( make the dictionary entry (the name follows VALUE) )
+        BL WORD HEADER  ( make the dictionary entry (the name follows VALUE) )
         DOCOL ,         ( append DOCOL )
         ['] LIT ,       ( append the codeword LIT )
         ,               ( append the initial value )
@@ -509,9 +513,9 @@
 ;
 
 : TO IMMEDIATE  ( n -- )
-        WORD            ( get the name of the value )
+        BL WORD         ( get the name of the value )
         FIND            ( look it up in the dictionary )
-        >DFA            ( get a pointer to the first data field (the 'LIT') )
+        >PFA            ( get a pointer to the first data field (the 'LIT') )
         1+              ( increment to point at the value )
         STATE @ IF      ( compiling? )
                 ['] LIT ,         ( compile LIT )
@@ -524,9 +528,9 @@
 
 ( x +TO VAL adds x to VAL )
 : +TO IMMEDIATE
-        WORD            ( get the name of the value )
+        BL WORD         ( get the name of the value )
         FIND            ( look it up in the dictionary )
-        >DFA            ( get a pointer to the first data field (the 'LIT') )
+        >PFA            ( get a pointer to the first data field (the 'LIT') )
         1+              ( increment to point at the value )
         STATE @ IF      ( compiling? )
                 ['] LIT ,         ( compile LIT )
@@ -602,7 +606,7 @@
 ( FORGET ---------------------------------------------------------------------- )
 
 : FORGET
-        WORD FIND       ( find the word, gets the dictionary entry address )
+        BL WORD FIND    ( find the word, gets the dictionary entry address )
         DUP @ LATEST !  ( set LATEST to point to the previous word )
         HERE !          ( and store HERE with the dictionary address )
 ;
@@ -631,7 +635,7 @@
 ;
 
 : SEE
-        WORD 2DUP FIND       ( find the dictionary entry to decompile )
+        BL WORD 2DUP FIND     ( find the dictionary entry to decompile )
 
         ?DUP 0= IF
                 ." Word '" TYPE ." ' not found in dictionary."
@@ -684,7 +688,7 @@
 
         4 SPACES
 
-        >DFA            ( get the data address, ie. points after DOCOL | end-of-word start-of-data )
+        >PFA            ( get the data address, ie. points after DOCOL | end-of-word start-of-data )
 
         ( now we start decompiling until we hit the end of the word )
         BEGIN           ( end start )
