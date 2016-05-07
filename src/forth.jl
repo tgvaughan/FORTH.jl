@@ -812,6 +812,11 @@ PARSE = defPrimWord("PARSE", () -> begin
     return NEXT
 end)
 
+BYE = defPrimWord("BYE", () -> begin
+    println("Bye!")
+    return 0
+end)
+
 STATE, STATE_CFA = defNewVar("STATE", 0)
 
 INTERPRET = defWord("INTERPRET",
@@ -834,7 +839,7 @@ INTERPRET = defWord("INTERPRET",
                 COMMA, BRANCH, -36,
 
             # No word found, parse number
-            BTICK, LIT, COMMA, TRACE, NUMBER, COMMA, BRANCH, -44,
+            NUMBER, BTICK, LIT, COMMA, COMMA, TRACE, BRANCH, -44,
         
        # Interpreting
         DUP, FIND, QDUP, ZBRANCH, 7,
@@ -860,11 +865,6 @@ QUIT = defWord("QUIT",
     QUERY,
     INTERPRET, PROMPT,
     BRANCH,-4])
-
-BYE = defPrimWord("BYE", () -> begin
-    println("Bye!")
-    return 0
-end)
 
 INCLUDE = defPrimWord("INCLUDE", () -> begin
     pushPS(32)
