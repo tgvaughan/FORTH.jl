@@ -121,7 +121,13 @@ function defPrim(f::Function; name="nameless")
     return -length(primitives)
 end
 
-callPrim(addr::Int64) = primitives[-addr]()
+function callPrim(addr::Int64)
+    if addr >=0 || -addr>length(primitives)
+        error("Attempted to execute non-existent primitive at address $addr.")
+    else
+        primitives[-addr]()
+    end
+end
 getPrimName(addr::Int64) = primNames[-addr]
 
 # Word creation functions
@@ -721,9 +727,9 @@ end)
 # Outer interpreter
 
 TRACE = defPrimWord("TRACE", () -> begin
-    println("Val: $(popPS())")
-    print("RS: "); printRS()
+    println("reg.W: $(reg.W) reg.IP: $(reg.IP)")
     print("PS: "); printPS()
+    print("RS: "); printRS()
     print("[paused]")
     readline()
 
@@ -936,9 +942,6 @@ IMMEDIATE = defPrimWord("IMMEDIATE", () -> begin
     return NEXT
 end, flags=F_IMMED)
 
-TICK = defWord("'",
-    [LIT, 32, WORD, FIND, TOCFA, EXIT])
-
 
 #### VM loop ####
 
@@ -950,7 +953,7 @@ elseif isfile(Pkg.dir("forth/src/lib.4th"))
     initFileName = Pkg.dir("forth/src/lib.4th")
 end
 
-function run(;initialize=false)
+function run(;initialize=true)
     # Begin with STDIN as source
     push!(sources, STDIN)
 
@@ -983,6 +986,11 @@ function run(;initialize=false)
             while !isempty(sources) && currentSource() != STDIN
                 close(pop!(sources))
             end
+
+            # Want backtrace in here eventually
+            println("reg.W: $(reg.W) reg.IP: $(reg.IP)")
+            print("PS: "); printPS()
+            print("RS: "); printRS()
 
             mem[STATE] = 0
             mem[NUMTIB] = 0
