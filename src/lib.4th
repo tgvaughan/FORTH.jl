@@ -427,9 +427,14 @@
                 ['] LITSTRING ,   ( compile LITSTRING )
                 HERE @          ( save the address of the length word on the stack )
                 0 ,             ( dummy length - we don't know what it is yet )
-                KEY DROP
+
                 BEGIN
-                        KEY             ( get next character of the string )
+                        >IN @ #TIB @ >= IF      \ End of TIB?
+                                QUERY           \ Get next line
+                        THEN
+
+                        TIB >IN @ + @ 1 >IN +!  \ Get char from TIB
+
                         DUP [CHAR] " <>
                 WHILE
                         C,              ( copy character )
@@ -441,9 +446,14 @@
                 SWAP !          ( and back-fill the length location )
         ELSE            ( immediate mode )
                 HERE @          ( get the start address of the temporary space )
-                KEY DROP
+                
                 BEGIN
-                        KEY
+                        >IN @ #TIB @ >= IF      \ End of TIB?
+                                QUERY           \ Get next line
+                        THEN
+
+                        TIB >IN @ + @ 1 >IN +!  \ Get char from TIB
+
                         DUP [CHAR] " <>
                 WHILE
                         OVER C!         ( save next character )
@@ -462,9 +472,13 @@
 ;
 
 : .( 
-        KEY DROP
         BEGIN
-                KEY
+                >IN @ #TIB @ >= IF      \ End of TIB?
+                        QUERY           \ Get next line
+                THEN
+
+                TIB >IN @ + @ 1 >IN +!  \ Get char from TIB
+
                 DUP [CHAR] ) = IF
                         DROP    ( drop the double quote character )
                         EXIT    ( return from this function )
@@ -494,10 +508,10 @@
 ;
 
 : VARIABLE
-        CREATE
+        BL WORD HEADER
+        DOVAR ,
         1 CELLS ALLOT   ( allocate 1 cell of memory, push the pointer to this memory )
 ;
-
 
 : VALUE         ( n -- )
         BL WORD HEADER  ( make the dictionary entry (the name follows VALUE) )
@@ -630,14 +644,14 @@
 ;
 
 : SEE
-        BL WORD 2DUP FIND     ( find the dictionary entry to decompile )
+        BL WORD DUP FIND     ( find the dictionary entry to decompile )
 
         ?DUP 0= IF
-                ." Word '" TYPE ." ' not found in dictionary."
+                ." Word '" COUNT TYPE ." ' not found in dictionary."
                 EXIT
         THEN
 
-        -ROT 2DROP
+        SWAP DROP
 
         ( Now we search again, looking for the next word in the dictionary.  This gives us
           the length of the word that we will be decompiling.  (Well, mostly it does). )

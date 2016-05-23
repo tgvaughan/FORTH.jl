@@ -567,7 +567,7 @@ RSPFETCH = defPrimWord("RSP@", () -> begin
 end)
 
 RSPSTORE = defPrimWord("RSP!", () -> begin
-    RSP = popPS()
+    reg.RSP = popPS()
     return NEXT
 end)
 
@@ -584,7 +584,7 @@ PSPFETCH = defPrimWord("PSP@", () -> begin
 end)
 
 PSPSTORE = defPrimWord("PSP!", () -> begin
-    PSP = popPS()
+    reg.PSP = popPS()
     return NEXT
 end)
 
@@ -764,7 +764,7 @@ NUMTIB, NUMTIB_CFA = defNewVar("#TIB", 0)
 TOIN, TOIN_CFA = defNewVar(">IN", 0)
 
 QUERY = defWord("QUERY",
-    [TIB_CFA, LIT, 80, EXPECT,
+    [TIB_CFA, LIT, 160, EXPECT,
     SPAN_CFA, FETCH, NUMTIB_CFA, STORE,
     LIT, 0, TOIN_CFA, STORE,
     EXIT])
@@ -876,10 +876,15 @@ PROMPT = defPrimWord("PROMPT", () -> begin
 end)
 
 QUIT = defWord("QUIT",
-    [RSP0_CFA, RSPSTORE,
+    [LIT, 0, STATE_CFA, STORE,
+    LIT, 0, NUMTIB_CFA, STORE,
+    RSP0_CFA, FETCH, RSPSTORE,
     QUERY,
     INTERPRET, PROMPT,
     BRANCH,-4])
+
+ABORT = defWord("ABORT",
+    [PSP0_CFA, FETCH, PSPSTORE, QUIT])
 
 INCLUDE = defPrimWord("INCLUDE", () -> begin
     pushPS(32)
@@ -995,16 +1000,8 @@ function run(;initialize=true)
                 close(pop!(sources))
             end
 
-            # Want backtrace in here eventually
-            println("reg.W: $(reg.W) reg.IP: $(reg.IP)")
-            print("PS: "); printPS()
-            print("RS: "); printRS()
-
-            mem[STATE] = 0
-            mem[NUMTIB] = 0
-            reg.PSP = mem[PSP0]
-            reg.RSP = mem[RSP0]
-            reg.IP = QUIT + 1
+            # QUIT
+            reg.IP = ABORT + 1
             jmp = NEXT
         end
     end
