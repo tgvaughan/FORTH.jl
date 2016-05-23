@@ -984,7 +984,7 @@ function run(;initialize=true)
     jmp = NEXT
     while jmp != 0
         try
-#           println("Entering prim $(getPrimName(jmp))")
+            #println("Entering prim $(getPrimName(jmp))")
             jmp = callPrim(jmp)
 
         catch ex

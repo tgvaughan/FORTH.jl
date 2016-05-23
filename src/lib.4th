@@ -149,14 +149,10 @@
 
 : +LOOP IMMEDIATE
 
-        trace
-
         ['] DUP , \ Store copy of increment
 
         ['] R> , ['] SWAP , ['] R> , ['] SWAP , ['] R> , ['] SWAP , ['] + , ['] 2DUP , ['] - ,
         ['] SWAP , ['] >R , ['] SWAP , ['] >R , ['] SWAP , ['] >R ,
-
-        trace
 
         \ Condition differently depending on sign of increment
         ['] SWAP , ['] 0>= , [COMPILE] IF
@@ -165,15 +161,11 @@
             ['] 0> ,
         [COMPILE] THEN
 
-        trace
-
         \ Branch back to begining of loop kernel
         ['] 0BRANCH , HERE @ - ,
 
         \ Clean up
         ['] RDROP , ['] RDROP , ['] RDROP ,
-
-        trace
 
         \ Record address of loop end for any LEAVEs to use
         HERE @ SWAP !
@@ -217,7 +209,6 @@
         REPEAT
 ;
 
-xx
 
 \ COMMENTS ----------------------------------------------------------------------
 
