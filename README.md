@@ -44,13 +44,12 @@ the library file.  Once this is complete you can start entering forth commands:
 
 Notice that unlike other forths, forth.jl echos a newline after reading each
 line of standard input.  This is an unfortunate side-effect of the way that
-I've implemented the primitive word KEY.  Hopefully I'll be able to fix this
-in future.
+I've implemented EXPECT.  Hopefully I'll be able to fix this in future.
 
 There's an example Mandelbrot Set drawing program included in the examples
 directory.  To run it, you'll have to locate this directory on your system (its
 location depends on what OS you happen to be using and how julia is installed).
-Once found, use the "INCLUDE" word to compile its definitions. For example, on
+Once found, use the INCLUDE word to compile its definitions. For example, on
 my system I can run the example in this way:
 
     include /home/tim/.julia/v0.4/forth/examples/mandelbrot.4th

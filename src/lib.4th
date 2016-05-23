@@ -25,7 +25,7 @@
 : C@ @ ;
 : C, , ;
 
-: DEPTH PSP@ PSP0 @ - ;
+: DEPTH PSP@ PSP0 - ;
 
 : '\n' 10 ;
 : BL 32 ;
@@ -362,7 +362,7 @@
 
 : .S            ( -- )
         [CHAR] < EMIT DEPTH U. [CHAR] > EMIT SPACE
-        PSP0 @ 1+
+        PSP0 1+
         BEGIN
                 DUP PSP@ 2 - <=
         WHILE

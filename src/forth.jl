@@ -36,16 +36,14 @@ primNames = Array{ASCIIString,1}()
 # Built-in variables
 
 nextVarAddr = 1
-RSP0 = nextVarAddr; nextVarAddr += 1
-PSP0 = nextVarAddr; nextVarAddr += 1
 HERE = nextVarAddr; nextVarAddr += 1
 LATEST = nextVarAddr; nextVarAddr += 1
 
-mem[RSP0] = nextVarAddr              # bottom of RS
-mem[PSP0] = mem[RSP0] + size_RS      # bottom of PS
-TIB = mem[PSP0] + size_PS            # address of terminal input buffer
-mem[HERE] = TIB + size_TIB           # location of bottom of dictionary
-mem[LATEST] = 0                      # no previous definition
+RSP0 = nextVarAddr                  # bottom of RS
+PSP0 = RSP0 + size_RS               # bottom of PS
+TIB = PSP0 + size_PS                # address of terminal input buffer
+mem[HERE] = TIB + size_TIB          # location of bottom of dictionary
+mem[LATEST] = 0                     # no previous definition
 
 DICT = mem[HERE] # Save bottom of dictionary as constant
 
@@ -56,7 +54,7 @@ type Reg
     IP::Int64   # Instruction pointer
     W::Int64    # Working register
 end
-reg = Reg(mem[RSP0], mem[PSP0], 0, 0)
+reg = Reg(RSP0, PSP0, 0, 0)
 
 # Stack manipulation functions
 
@@ -66,8 +64,8 @@ type ReturnStackUnderflow <: Exception end
 Base.showerror(io::IO, ex::ParamStackUnderflow) = print(io, "Parameter stack underflow.")
 Base.showerror(io::IO, ex::ReturnStackUnderflow) = print(io, "Return stack underflow.")
 
-getRSDepth() = reg.RSP - mem[RSP0]
-getPSDepth() = reg.PSP - mem[PSP0]
+getRSDepth() = reg.RSP - RSP0
+getPSDepth() = reg.PSP - PSP0
 
 function ensurePSDepth(depth::Int64)
     if getPSDepth()<depth
@@ -237,8 +235,9 @@ end)
 
 HERE_CFA = defExistingVar("HERE", HERE)
 LATEST_CFA = defExistingVar("LATEST", LATEST)
-PSP0_CFA = defExistingVar("PSP0", PSP0)
-RSP0_CFA = defExistingVar("RSP0", RSP0)
+
+PSP0_CFA = defConst("PSP0", PSP0)
+RSP0_CFA = defConst("RSP0", RSP0)
 
 defConst("DOCOL", DOCOL)
 defConst("DOCON", DOCON)
@@ -878,13 +877,13 @@ end)
 QUIT = defWord("QUIT",
     [LIT, 0, STATE_CFA, STORE,
     LIT, 0, NUMTIB_CFA, STORE,
-    RSP0_CFA, FETCH, RSPSTORE,
+    RSP0_CFA, RSPSTORE,
     QUERY,
     INTERPRET, PROMPT,
     BRANCH,-4])
 
 ABORT = defWord("ABORT",
-    [PSP0_CFA, FETCH, PSPSTORE, QUIT])
+    [PSP0_CFA, PSPSTORE, QUIT])
 
 INCLUDE = defPrimWord("INCLUDE", () -> begin
     pushPS(32)
@@ -1043,11 +1042,11 @@ function dump(startAddr::Int64; count::Int64 = 100, cellsPerLine::Int64 = 10)
 end
 
 function printPS()
-    count = reg.PSP - mem[PSP0]
+    count = reg.PSP - PSP0
 
     if count > 0
         print("<$count>")
-        for i in (mem[PSP0]+1):reg.PSP
+        for i in (PSP0+1):reg.PSP
             print(" $(mem[i])")
         end
         println()
@@ -1057,11 +1056,11 @@ function printPS()
 end
 
 function printRS()
-    count = reg.RSP - mem[RSP0]
+    count = reg.RSP - RSP0
 
     if count > 0
         print("<$count>")
-        for i in (mem[RSP0]+1):reg.RSP
+        for i in (RSP0+1):reg.RSP
             print(" $(mem[i])")
         end
         println()
