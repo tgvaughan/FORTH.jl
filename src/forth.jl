@@ -108,6 +108,7 @@ end
 # Handy functions for adding/retrieving strings to/from memory.
 
 getString(addr::Int64, len::Int64) = ASCIIString([Char(c) for c in mem[addr:(addr+len-1)]])
+
 function putString(str::ASCIIString, addr::Int64)
     mem[addr:(addr+length(str)-1)] = [Int64(c) for c in str]
 end
@@ -116,7 +117,7 @@ end
 
 function defPrim(f::Function; name="nameless")
     push!(primitives, f)
-    push!(primNames, replace(replace(name, "\004", "EOF"), "\n", "\\n"))
+    push!(primNames, replace(name, "\004", "EOF"))
 
     return -length(primitives)
 end
@@ -604,7 +605,14 @@ end)
 sources = Array{Any,1}()
 currentSource() = sources[length(sources)]
 
-EOF_CFA = defConst("EOF", 4)
+EOF = defPrimWord("\x04", () -> begin
+    close(pop!(sources))
+    if !isempty(sources)
+        return NEXT
+    else
+        return 0
+    end
+end)
 
 EMIT = defPrimWord("EMIT", () -> begin
     print(Char(popPS()))
@@ -622,7 +630,7 @@ EXPECT = defPrimWord("EXPECT", () -> begin
         putString(line[1:mem[SPAN]], addr)
     else
         mem[SPAN] = 1
-        mem[addr] = EOF
+        mem[addr] = 4 # eof
     end
 
     return NEXT
@@ -976,7 +984,7 @@ function run(;initialize=true)
     jmp = NEXT
     while jmp != 0
         try
-            #println("Entering prim $(getPrimName(jmp))")
+#           println("Entering prim $(getPrimName(jmp))")
             jmp = callPrim(jmp)
 
         catch ex
