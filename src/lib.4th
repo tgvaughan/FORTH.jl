@@ -496,11 +496,8 @@
 ( CONSTANTS AND VARIABLES ------------------------------------------------------ )
 
 : CONSTANT
-        BL WORD HEADER  ( make dictionary entry (the name follows CONSTANT) )
-        DOCOL ,         ( append DOCOL (the codeword field of this word) )
-        ['] LIT ,       ( append the codeword LIT )
-        ,               ( append the value on the top of the stack )
-        ['] EXIT ,      ( append the codeword EXIT )
+        CREATE ,
+DOES>   @
 ;
 
 : ALLOT         ( n -- )
@@ -508,24 +505,19 @@
 ;
 
 : VARIABLE
-        BL WORD HEADER
-        DOVAR ,
+        CREATE
         1 CELLS ALLOT   ( allocate 1 cell of memory, push the pointer to this memory )
 ;
 
 : VALUE         ( n -- )
-        BL WORD HEADER  ( make the dictionary entry (the name follows VALUE) )
-        DOCOL ,         ( append DOCOL )
-        ['] LIT ,       ( append the codeword LIT )
-        ,               ( append the initial value )
-        ['] EXIT ,      ( append the codeword EXIT )
+        CREATE ,
+DOES>   @
 ;
 
 : TO IMMEDIATE  ( n -- )
         BL WORD         ( get the name of the value )
         FIND            ( look it up in the dictionary )
         >PFA            ( get a pointer to the first data field (the 'LIT') )
-        1+              ( increment to point at the value )
         STATE @ IF      ( compiling? )
                 ['] LIT ,         ( compile LIT )
                 ,               ( compile the address of the value )
@@ -540,7 +532,6 @@
         BL WORD         ( get the name of the value )
         FIND            ( look it up in the dictionary )
         >PFA            ( get a pointer to the first data field (the 'LIT') )
-        1+              ( increment to point at the value )
         STATE @ IF      ( compiling? )
                 ['] LIT ,         ( compile LIT )
                 ,               ( compile the address of the value )
