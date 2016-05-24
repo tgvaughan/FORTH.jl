@@ -36,16 +36,16 @@ primNames = Array{ASCIIString,1}()
 # Built-in variables
 
 nextVarAddr = 1
-HERE = nextVarAddr; nextVarAddr += 1
+H = nextVarAddr; nextVarAddr += 1
 LATEST = nextVarAddr; nextVarAddr += 1
 
 RSP0 = nextVarAddr                  # bottom of RS
 PSP0 = RSP0 + size_RS               # bottom of PS
 TIB = PSP0 + size_PS                # address of terminal input buffer
-mem[HERE] = TIB + size_TIB          # location of bottom of dictionary
+mem[H] = TIB + size_TIB          # location of bottom of dictionary
 mem[LATEST] = 0                     # no previous definition
 
-DICT = mem[HERE] # Save bottom of dictionary as constant
+DICT = mem[H] # Save bottom of dictionary as constant
 
 # VM registers
 type Reg
@@ -136,20 +136,20 @@ F_HIDDEN = 256
 F_LENMASK = 127
 
 function createHeader(name::AbstractString, flags::Int64)
-    mem[mem[HERE]] = mem[LATEST]
-    mem[LATEST] = mem[HERE]
-    mem[HERE] += 1
+    mem[mem[H]] = mem[LATEST]
+    mem[LATEST] = mem[H]
+    mem[H] += 1
 
-    mem[mem[HERE]] = length(name) | flags; mem[HERE] += 1
-    putString(name, mem[HERE]); mem[HERE] += length(name)
+    mem[mem[H]] = length(name) | flags; mem[H] += 1
+    putString(name, mem[H]); mem[H] += length(name)
 end
 
 function defPrimWord(name::AbstractString, f::Function; flags::Int64=0)
     createHeader(name, flags)
 
-    codeWordAddr = mem[HERE]
+    codeWordAddr = mem[H]
     mem[codeWordAddr] = defPrim(f, name=name)
-    mem[HERE] += 1
+    mem[H] += 1
 
     return codeWordAddr
 end
@@ -157,13 +157,13 @@ end
 function defWord(name::AbstractString, wordAddrs::Array{Int64,1}; flags::Int64=0)
     createHeader(name, flags)
 
-    addr = mem[HERE]
-    mem[mem[HERE]] = DOCOL
-    mem[HERE] += 1
+    addr = mem[H]
+    mem[mem[H]] = DOCOL
+    mem[H] += 1
 
     for wordAddr in wordAddrs
-        mem[mem[HERE]] = wordAddr
-        mem[HERE] += 1
+        mem[mem[H]] = wordAddr
+        mem[H] += 1
     end
 
     return addr
@@ -182,11 +182,11 @@ end
 function defNewVar(name::AbstractString, initial::Int64; flags::Int64=0)
     createHeader(name, flags)
     
-    codeWordAddr = mem[HERE]
-    varAddr = mem[HERE] + 1
+    codeWordAddr = mem[H]
+    varAddr = mem[H] + 1
 
-    mem[mem[HERE]] = DOVAR; mem[HERE] += 1
-    mem[mem[HERE]] = initial; mem[HERE] += 1
+    mem[mem[H]] = DOVAR; mem[H] += 1
+    mem[mem[H]] = initial; mem[H] += 1
 
     return varAddr, codeWordAddr
 end
@@ -194,10 +194,10 @@ end
 function defConst(name::AbstractString, val::Int64; flags::Int64=0)
     createHeader(name, flags)
 
-    codeWordAddr = mem[HERE]
+    codeWordAddr = mem[H]
 
-    mem[mem[HERE]] = DOCON; mem[HERE] += 1
-    mem[mem[HERE]] = val; mem[HERE] += 1
+    mem[mem[H]] = DOCON; mem[H] += 1
+    mem[mem[H]] = val; mem[H] += 1
 
     return codeWordAddr
 end
@@ -233,7 +233,7 @@ end)
 
 # Dictionary entries for core built-in variables, constants
 
-HERE_CFA = defExistingVar("HERE", HERE)
+H_CFA = defExistingVar("H", H)
 LATEST_CFA = defExistingVar("LATEST", LATEST)
 
 PSP0_CFA = defConst("PSP0", PSP0)
@@ -744,8 +744,8 @@ TRACE = defPrimWord("TRACE", () -> begin
 end)
 
 COMMA = defPrimWord(",", () -> begin
-    mem[mem[HERE]] = popPS()
-    mem[HERE] += 1
+    mem[mem[H]] = popPS()
+    mem[H] += 1
 
     return NEXT
 end)
@@ -776,8 +776,8 @@ WORD = defPrimWord("WORD", () -> begin
         mem[TOIN] += 1
     end
 
-    countAddr = mem[HERE]
-    addr = mem[HERE]+1
+    countAddr = mem[H]
+    addr = mem[H]+1
 
     # Start reading in word
     count = 0
@@ -804,7 +804,7 @@ PARSE = defPrimWord("PARSE", () -> begin
     delim = popPS()
 
     # Chew up initial occurrences of delim
-    addr = mem[HERE]
+    addr = mem[H]
 
     # Start reading input stream
     count = 0

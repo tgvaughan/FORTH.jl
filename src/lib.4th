@@ -27,6 +27,8 @@
 
 : DEPTH PSP@ PSP0 - ;
 
+: HERE H @ ;
+
 : '\n' 10 ;
 : BL 32 ;
 
@@ -60,54 +62,54 @@
 
 : IF IMMEDIATE
         ['] 0BRANCH ,     \ compile 0BRANCH
-        HERE @          \ save location of the offset on the stack
+        HERE          \ save location of the offset on the stack
         0 ,             \ compile a dummy offset
 ;
 
 : THEN IMMEDIATE
         DUP
-        HERE @ SWAP -   \ calculate the offset from the address saved on the stack
+        HERE SWAP -   \ calculate the offset from the address saved on the stack
         SWAP !          \ store the offset in the back-filled location
 ;
 
 : ELSE IMMEDIATE
         ['] BRANCH ,      \ definite branch to just over the false-part
-        HERE @          \ save location of the offset on the stack
+        HERE          \ save location of the offset on the stack
         0 ,             \ compile a dummy offset
         SWAP            \ now back-fill the original (IF) offset
         DUP             \ same as for THEN word above
-        HERE @ SWAP -
+        HERE SWAP -
         SWAP !
 ;
 
 : BEGIN IMMEDIATE
-        HERE @          \ save location on the stack
+        HERE          \ save location on the stack
 ;
 
 : UNTIL IMMEDIATE
         ['] 0BRANCH ,     \ compile 0BRANCH
-        HERE @ -        \ calculate the offset from the address saved on the stack
+        HERE -        \ calculate the offset from the address saved on the stack
         ,               \ compile the offset here
 ;
 
 : AGAIN IMMEDIATE
         ['] BRANCH ,      \ compile BRANCH
-        HERE @ -        \ calculate the offset back
+        HERE -        \ calculate the offset back
         ,               \ compile the offset here
 ;
 
 : WHILE IMMEDIATE
         ['] 0BRANCH ,     \ compile 0BRANCH
-        HERE @          \ save location of the offset2 on the stack
+        HERE          \ save location of the offset2 on the stack
         0 ,             \ compile a dummy offset2
 ;
 
 : REPEAT IMMEDIATE
         ['] BRANCH ,      \ compile BRANCH
         SWAP            \ get the original offset (from BEGIN)
-        HERE @ - ,      \ and compile it after BRANCH
+        HERE - ,      \ and compile it after BRANCH
         DUP
-        HERE @ SWAP -   \ calculate the offset2
+        HERE SWAP -   \ calculate the offset2
         SWAP !          \ and back-fill it in the original location
 ;
 
@@ -119,15 +121,15 @@
 : DO IMMEDIATE
         ['] LIT , -1 , [COMPILE] IF
         ['] >R , ['] >R ,
-        ['] LIT , HERE @ 0 , ['] >R ,
-        HERE @
+        ['] LIT , HERE 0 , ['] >R ,
+        HERE
 ;
 
 : ?DO IMMEDIATE
         ['] 2DUP , ['] - , [COMPILE] IF
         ['] >R , ['] >R ,
-        ['] LIT , HERE @ 0 , ['] >R ,
-        HERE @
+        ['] LIT , HERE 0 , ['] >R ,
+        HERE
 ;
 
 : I RSP@ 3 - @ ;
@@ -137,7 +139,7 @@
 : ?LEAVE IMMEDIATE
         ['] 0BRANCH , 13 ,
         ['] R> , ['] RDROP , ['] RDROP ,
-        ['] LIT ,  HERE @ 7 + , ['] DUP , ['] -ROT , ['] - , ['] SWAP , ['] ! ,
+        ['] LIT ,  HERE 7 + , ['] DUP , ['] -ROT , ['] - , ['] SWAP , ['] ! ,
         ['] BRANCH ,
         0 ,
 ;
@@ -162,13 +164,13 @@
         [COMPILE] THEN
 
         \ Branch back to begining of loop kernel
-        ['] 0BRANCH , HERE @ - ,
+        ['] 0BRANCH , HERE - ,
 
         \ Clean up
         ['] RDROP , ['] RDROP , ['] RDROP ,
 
         \ Record address of loop end for any LEAVEs to use
-        HERE @ SWAP !
+        HERE SWAP !
 
         [COMPILE] ELSE
             ['] 2DROP , \ Clean up if loop was entirely skipped (?DO)
@@ -418,14 +420,14 @@
 
 ( C, appends a byte to the current compiled word. )
 : C,
-        HERE @ C!
-        1 HERE +!
+        HERE C!
+        1 H +!
 ;
 
 : S" IMMEDIATE          ( -- addr len )
         STATE @ IF      ( compiling? )
                 ['] LITSTRING ,   ( compile LITSTRING )
-                HERE @          ( save the address of the length word on the stack )
+                HERE          ( save the address of the length word on the stack )
                 0 ,             ( dummy length - we don't know what it is yet )
 
                 BEGIN
@@ -441,11 +443,11 @@
                 REPEAT
                 DROP            ( drop the double quote character at the end )
                 DUP             ( get the saved address of the length word )
-                HERE @ SWAP -   ( calculate the length )
+                HERE SWAP -   ( calculate the length )
                 1-              ( subtract 1 (because we measured from the start of the length word) )
                 SWAP !          ( and back-fill the length location )
         ELSE            ( immediate mode )
-                HERE @          ( get the start address of the temporary space )
+                HERE          ( get the start address of the temporary space )
                 
                 BEGIN
                         >IN @ #TIB @ >= IF      \ End of TIB?
@@ -460,8 +462,8 @@
                         1+              ( increment address )
                 REPEAT
                 DROP            ( drop the final " character )
-                HERE @ -        ( calculate the length )
-                HERE @          ( push the start address )
+                HERE -        ( calculate the length )
+                HERE          ( push the start address )
                 SWAP            ( addr len )
         THEN
 ;
@@ -504,7 +506,7 @@
 ;
 
 : ALLOT         ( n -- )
-        HERE +!         ( adds n to HERE, after this the old value of HERE is still on the stack )
+        H +!         ( adds n to H, after this the old value of H is still on the stack )
 ;
 
 : VARIABLE
@@ -617,7 +619,7 @@
 : FORGET
         BL WORD FIND    ( find the word, gets the dictionary entry address )
         DUP @ LATEST !  ( set LATEST to point to the previous word )
-        HERE !          ( and store HERE with the dictionary address )
+        H !          ( and store H with the dictionary address )
 ;
 
 ( DUMP ------------------------------------------------------------------------ )
@@ -655,7 +657,7 @@
 
         ( Now we search again, looking for the next word in the dictionary.  This gives us
           the length of the word that we will be decompiling.  (Well, mostly it does). )
-        HERE @          ( address of the end of the last compiled word )
+        HERE          ( address of the end of the last compiled word )
         LATEST @        ( word last curr )
         BEGIN
                 2 PICK          ( word last curr word )
@@ -765,4 +767,4 @@
 ( MEMORY  ------------------------------------------------------------------ )
 
 : UNUSED  ( -- cells )
-        MEMSIZE HERE @ - ;
+        MEMSIZE HERE - ;
