@@ -912,6 +912,37 @@ HEADER = defPrimWord("HEADER", () -> begin
     return NEXT
 end)
 
+CREATE = defWord("CREATE",
+    [LIT, 32, WORD, HEADER,
+    LIT, DOVAR, COMMA,
+    EXIT]);
+
+DODOES = defPrim(() -> begin
+    pushRS(reg.IP)
+    reg.IP = popPS()
+    return NEXT
+end, name="DODOES")
+
+BDOES = defPrimWord("(DOES>)", () -> begin
+    pushPS(mem[LATEST])
+    callPrim(mem[TOCFA])
+    cfa = popPS()
+    println(cfa)
+
+    mem[cfa] = defPrim(eval(:(() -> begin
+        pushPS($(mem[H]))
+        return DODOES
+    end)), name="doesPrim")
+
+    mem[mem[H]] = LIT; mem[H] += 1
+    mem[mem[H]] = cfa+1; mem[H] += 1
+
+    return NEXT
+end, flags=F_IMMED)
+
+DOES = defWord("DOES>",
+    [BDOES, EXIT])
+
 LBRAC = defPrimWord("[", () -> begin
     mem[STATE] = 0
     return NEXT
