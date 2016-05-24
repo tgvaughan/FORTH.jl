@@ -27,8 +27,6 @@
 
 : DEPTH PSP@ PSP0 - ;
 
-: HERE H @ ;
-
 : '\n' 10 ;
 : BL 32 ;
 

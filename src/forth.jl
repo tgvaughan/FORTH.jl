@@ -902,6 +902,9 @@ end)
 
 # Compilation
 
+HERE = defWord("HERE",
+    [H_CFA, FETCH, EXIT])
+
 HEADER = defPrimWord("HEADER", () -> begin
     wordAddr = popPS()+1
     wordLen = mem[wordAddr-1]
@@ -915,33 +918,35 @@ end)
 CREATE = defWord("CREATE",
     [LIT, 32, WORD, HEADER,
     LIT, DOVAR, COMMA,
-    EXIT]);
+    EXIT])
 
 DODOES = defPrim(() -> begin
     pushRS(reg.IP)
     reg.IP = popPS()
+    pushPS(reg.W + 1)
     return NEXT
 end, name="DODOES")
 
-BDOES = defPrimWord("(DOES>)", () -> begin
+DOES_HELPER = defPrimWord("(DOES>)", () -> begin
+
     pushPS(mem[LATEST])
     callPrim(mem[TOCFA])
     cfa = popPS()
-    println(cfa)
+
+    runtimeAddr = popPS()
 
     mem[cfa] = defPrim(eval(:(() -> begin
-        pushPS($(mem[H]))
+        pushPS($(runtimeAddr))
         return DODOES
     end)), name="doesPrim")
-
-    mem[mem[H]] = LIT; mem[H] += 1
-    mem[mem[H]] = cfa+1; mem[H] += 1
 
     return NEXT
 end, flags=F_IMMED)
 
 DOES = defWord("DOES>",
-    [BDOES, EXIT])
+    [BTICK, LIT, COMMA, HERE, LIT, 3, ADD, COMMA,
+    BTICK, DOES_HELPER, COMMA, BTICK, EXIT, COMMA, EXIT],
+    flags=F_IMMED)
 
 LBRAC = defPrimWord("[", () -> begin
     mem[STATE] = 0
