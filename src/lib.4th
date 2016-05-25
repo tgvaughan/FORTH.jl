@@ -32,7 +32,7 @@
 
 : LITERAL IMMEDIATE ['] LIT , , ;
 
-: ' BL WORD FIND >CFA ;
+: ' BL WORD FIND DROP ;
 
 : CHAR BL WORD 1+ @ ;
 : [CHAR] IMMEDIATE
@@ -45,8 +45,7 @@
 
 : [COMPILE] IMMEDIATE
         BL WORD         \ get the next word
-        FIND            \ find it in the dictionary
-        >CFA            \ get its codeword
+        FIND DROP       \ find it in the dictionary
         ,               \ and compile that
 ;
 
@@ -516,8 +515,8 @@ DOES>   @
 
 : TO IMMEDIATE  ( n -- )
         BL WORD         ( get the name of the value )
-        FIND            ( look it up in the dictionary )
-        >CFA >BODY            ( get a pointer to the first data field (the 'LIT') )
+        FIND DROP       ( look it up in the dictionary )
+        >BODY           ( get a pointer to the first data field (the 'LIT') )
         STATE @ IF      ( compiling? )
                 ['] LIT ,         ( compile LIT )
                 ,               ( compile the address of the value )
@@ -530,8 +529,8 @@ DOES>   @
 ( x +TO VAL adds x to VAL )
 : +TO IMMEDIATE
         BL WORD         ( get the name of the value )
-        FIND            ( look it up in the dictionary )
-        >CFA >BODY            ( get a pointer to the first data field (the 'LIT') )
+        FIND DROP       ( look it up in the dictionary )
+        >BODY           ( get a pointer to the first data field (the 'LIT') )
         STATE @ IF      ( compiling? )
                 ['] LIT ,         ( compile LIT )
                 ,               ( compile the address of the value )
@@ -555,8 +554,7 @@ DOES>   @
 
 ( PRINTING THE DICTIONARY ------------------------------------------------------ )
 
-: ID.
-        1+              ( skip over the link pointer )
+: .NAME
         DUP @           ( get the flags/length byte )
         F_LENMASK AND   ( mask out the flags - just want the length )
 
@@ -594,21 +592,12 @@ DOES>   @
                 ?DUP            ( while link pointer is not null )
         WHILE
                 DUP ?HIDDEN NOT IF      ( ignore hidden words )
-                        DUP ID.         ( but if not hidden, print the word )
+                        DUP 1+ .NAME         ( but if not hidden, print the word )
                         SPACE
                 THEN
                 @               ( dereference the link pointer - go to previous word )
         REPEAT
         CR
-;
-
-
-( FORGET ---------------------------------------------------------------------- )
-
-: FORGET
-        BL WORD FIND    ( find the word, gets the dictionary entry address )
-        DUP @ LATEST !  ( set LATEST to point to the previous word )
-        H !          ( and store H with the dictionary address )
 ;
 
 ( DUMP ------------------------------------------------------------------------ )
@@ -618,31 +607,24 @@ DOES>   @
 
 ( DECOMPILER ------------------------------------------------------------------ )
 
-: CFA>
-        LATEST @        ( start at LATEST dictionary entry )
+: >NAME
         BEGIN
-                ?DUP            ( while link pointer is not null )
-        WHILE
-                2DUP SWAP       ( cfa curr curr cfa )
-                < IF            ( current dictionary entry < cfa? )
-                        NIP             ( leave curr dictionary entry on the stack )
-                        EXIT
-                THEN
-                @               ( follow link pointer back )
-        REPEAT
-        DROP            ( restore stack )
-        0               ( sorry, nothing found )
+                1- DUP @
+                NFA_MARK AND
+        NFA_MARK = UNTIL
 ;
 
-: SEE
-        BL WORD DUP FIND     ( find the dictionary entry to decompile )
+: >LFA  >NAME 1- ;
 
-        ?DUP 0= IF
+: SEE
+        BL WORD FIND    ( find the dictionary entry to decompile )
+
+        0= IF
                 ." Word '" COUNT TYPE ." ' not found in dictionary."
                 EXIT
         THEN
 
-        SWAP DROP
+        >LFA
 
         ( Now we search again, looking for the next word in the dictionary.  This gives us
           the length of the word that we will be decompiling.  (Well, mostly it does). )
@@ -663,17 +645,17 @@ DOES>   @
         DUP >CFA @ CASE
                 DOCOL OF
                         \ Colon definition
-                        [CHAR] : EMIT SPACE DUP ID. SPACE
+                        [CHAR] : EMIT SPACE DUP 1+ .NAME SPACE
                         DUP ?IMMEDIATE IF ." IMMEDIATE " THEN CR
                 ENDOF
                 DOVAR OF
                         \ Variable definition
-                        ." Variable " DUP ID. CR
+                        ." Variable " DUP 1+ .NAME CR
                         2DROP EXIT
                 ENDOF
                 DOCON OF
                         \ Constant definition
-                        ." Constant " DUP ID. CR
+                        ." Constant " DUP 1+ .NAME CR
                         2DROP EXIT
                 ENDOF
 
@@ -681,10 +663,6 @@ DOES>   @
                 ." Primitive or word with unrecognized codeword." CR 
                 DROP 2DROP EXIT
         ENDCASE
-
-        ( begin the definition with : NAME [IMMEDIATE] )
-        ( [CHAR] : EMIT SPACE DUP ID. SPACE
-        DUP ?IMMEDIATE IF ." IMMEDIATE " THEN CR 4 )
 
         4 SPACES
 
@@ -725,8 +703,8 @@ DOES>   @
                 ['] ['] OF                  ( is it ['] ? )
                         ." ['] "
                         1+ DUP @               ( get the next codeword )
-                        CFA>                    ( and force it to be printed as a dictionary entry )
-                        ID. SPACE
+                        >NAME                    ( and force it to be printed as a dictionary entry )
+                        .NAME SPACE
                 ENDOF
                 ['] EXIT OF               ( is it EXIT? )
                         ( We expect the last word to be EXIT, and if it is then we don't print it
@@ -740,8 +718,8 @@ DOES>   @
                 ENDOF
                                         ( default case: )
                         DUP                     ( in the default case we always need to DUP before using )
-                        CFA>                    ( look up the codeword to get the dictionary entry )
-                        ID. SPACE               ( and print it )
+                        >NAME                    ( look up the codeword to get the dictionary entry )
+                        .NAME SPACE               ( and print it )
                 ENDCASE
 
                 1+             ( end start+1 )
@@ -752,6 +730,19 @@ DOES>   @
         2DROP           ( restore stack )
 ;
 
+
+( FORGET and HIDE ------------------------------------------------------------ )
+
+: FORGET
+        BL WORD FIND >LFA   ( find the word, gets the dictionary entry address )
+        DUP @ LATEST !      ( set LATEST to point to the previous word )
+        H !                 ( and store H with the dictionary address )
+;
+
+: HIDE
+        BL WORD FIND DROP >NAME
+        DUP F_HIDDEN OR SWAP !
+;
 
 ( MEMORY  ------------------------------------------------------------------ )
 

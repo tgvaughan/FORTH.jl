@@ -131,16 +131,17 @@ getPrimName(addr::Int64) = primNames[-addr]
 
 # Word creation functions
 
-F_IMMED = 128
-F_HIDDEN = 256
-F_LENMASK = 127
+F_LENMASK = 31
+F_IMMED = 32
+F_HIDDEN = 64
+NFA_MARK = 128
 
 function createHeader(name::AbstractString, flags::Int64)
     mem[mem[H]] = mem[LATEST]
     mem[LATEST] = mem[H]
     mem[H] += 1
 
-    mem[mem[H]] = length(name) | flags; mem[H] += 1
+    mem[mem[H]] = length(name) | flags | NFA_MARK; mem[H] += 1
     putString(name, mem[H]); mem[H] += length(name)
 end
 
@@ -249,6 +250,7 @@ defConst("MEMSIZE", size_mem)
 F_IMMED_CFA = defConst("F_IMMED", F_IMMED)
 F_HIDDEN_CFA = defConst("F_HIDDEN", F_HIDDEN)
 F_LENMASK_CFA = defConst("F_LENMASK", F_LENMASK)
+NFA_MARK_CFA = defConst("NFA_MARK", NFA_MARK)
 
 # Basic forth primitives
 
@@ -670,6 +672,7 @@ FIND = defPrimWord("FIND", () -> begin
     word = lowercase(getString(wordAddr, wordLen))
 
     latest = LATEST
+    lenAndFlags = 0
     
     i = 0
     while (latest = mem[latest]) > 0
@@ -701,7 +704,6 @@ FIND = defPrimWord("FIND", () -> begin
         pushPS(countedAddr)
         pushPS(0)
     end
-
 
     return NEXT
 end)
@@ -852,30 +854,30 @@ INTERPRET = defWord("INTERPRET",
     DUP, FETCH, ZE, ZBRANCH, 3,
         DROP, EXIT, # Exit if TIB is exhausted
 
-    STATE_CFA, FETCH, ZBRANCH, 31,
+    STATE_CFA, FETCH, ZBRANCH, 24,
         # Compiling
-        DUP, FIND, QDUP, ZBRANCH, 19,
+        FIND, QDUP, ZBRANCH, 13,
 
             # Found word. 
-            SWAP, DROP,
-            DUP, TOCFA, SWAP, INCR, FETCH, LIT, F_IMMED, AND, ZBRANCH, 4,
+            LIT, -1, EQ, INVERT, ZBRANCH, 4,
+
                 # Immediate: Execute!
-                EXECUTE, BRANCH, -33,
+                EXECUTE, BRANCH, -26,
 
                 # Not immediate: Compile!
-                COMMA, BRANCH, -36,
+                COMMA, BRANCH, -29,
 
             # No word found, parse number
-            NUMBER, BTICK, LIT, COMMA, COMMA, BRANCH, -43,
+            NUMBER, BTICK, LIT, COMMA, COMMA, BRANCH, -36,
         
        # Interpreting
-        DUP, FIND, QDUP, ZBRANCH, 7,
+        FIND, QDUP, ZBRANCH, 5,
 
             # Found word. Execute!
-            SWAP, DROP, TOCFA, EXECUTE, BRANCH, -54,
+            DROP, EXECUTE, BRANCH, -44,
 
             # No word found, parse number and leave on stack
-            NUMBER, BRANCH, -57,
+            NUMBER, BRANCH, -47,
     EXIT]
 )
 
@@ -972,28 +974,22 @@ RBRAC = defPrimWord("]", () -> begin
 end, flags=F_IMMED)
 
 HIDDEN = defPrimWord("HIDDEN", () -> begin
-    addr = popPS() + 1
-    mem[addr] = mem[addr] $ F_HIDDEN
+    lenAndFlagsAddr = mem[LATEST] + 1
+    mem[lenAndFlagsAddr] = mem[lenAndFlagsAddr] $ F_HIDDEN
     return NEXT
 end)
-
-HIDE = defWord("HIDE",
-    [LIT, 32, WORD,
-    FIND,
-    HIDDEN,
-    EXIT])
 
 COLON = defWord(":",
     [LIT, 32, WORD,
     HEADER,
     LIT, DOCOL, COMMA,
-    LATEST_CFA, FETCH, HIDDEN,
+    HIDDEN,
     RBRAC,
     EXIT])
 
 SEMICOLON = defWord(";",
     [LIT, EXIT, COMMA,
-    LATEST_CFA, FETCH, HIDDEN,
+    HIDDEN,
     LBRAC,
     EXIT], flags=F_IMMED)
 
