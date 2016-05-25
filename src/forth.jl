@@ -649,6 +649,19 @@ end)
 
 # Dictionary searches
 
+TOCFA = defPrimWord(">CFA", () -> begin
+
+    addr = popPS()
+    lenAndFlags = mem[addr+1]
+    len = lenAndFlags & F_LENMASK
+
+    pushPS(addr + 2 + len)
+
+    return NEXT
+end)
+
+TOBODY = defWord(">BODY", [INCR, EXIT])
+
 FIND = defPrimWord("FIND", () -> begin
 
     countedAddr = popPS()
@@ -676,23 +689,23 @@ FIND = defPrimWord("FIND", () -> begin
         end
     end
 
-    pushPS(latest)
+    if latest > 0
+        pushPS(latest)
+        callPrim(mem[TOCFA])
+        if (lenAndFlags & F_IMMED) == F_IMMED
+            pushPS(1)
+        else
+            pushPS(-1)
+        end
+    else
+        pushPS(countedAddr)
+        pushPS(0)
+    end
+
 
     return NEXT
 end)
 
-TOCFA = defPrimWord(">CFA", () -> begin
-
-    addr = popPS()
-    lenAndFlags = mem[addr+1]
-    len = lenAndFlags & F_LENMASK
-
-    pushPS(addr + 2 + len)
-
-    return NEXT
-end)
-
-TOPFA = defWord(">PFA", [TOCFA, INCR, EXIT])
 
 # Branching
 

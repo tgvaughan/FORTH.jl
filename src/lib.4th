@@ -517,7 +517,7 @@ DOES>   @
 : TO IMMEDIATE  ( n -- )
         BL WORD         ( get the name of the value )
         FIND            ( look it up in the dictionary )
-        >PFA            ( get a pointer to the first data field (the 'LIT') )
+        >CFA >BODY            ( get a pointer to the first data field (the 'LIT') )
         STATE @ IF      ( compiling? )
                 ['] LIT ,         ( compile LIT )
                 ,               ( compile the address of the value )
@@ -531,7 +531,7 @@ DOES>   @
 : +TO IMMEDIATE
         BL WORD         ( get the name of the value )
         FIND            ( look it up in the dictionary )
-        >PFA            ( get a pointer to the first data field (the 'LIT') )
+        >CFA >BODY            ( get a pointer to the first data field (the 'LIT') )
         STATE @ IF      ( compiling? )
                 ['] LIT ,         ( compile LIT )
                 ,               ( compile the address of the value )
@@ -688,7 +688,7 @@ DOES>   @
 
         4 SPACES
 
-        >PFA            ( get the data address, ie. points after DOCOL | end-of-word start-of-data )
+        >CFA >BODY            ( get the data address, ie. points after DOCOL | end-of-word start-of-data )
 
         ( now we start decompiling until we hit the end of the word )
         BEGIN           ( end start )
