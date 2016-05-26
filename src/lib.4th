@@ -741,7 +741,7 @@ DOES>   @
 
 : HIDE
         BL WORD FIND DROP >NAME
-        DUP F_HIDDEN OR SWAP !
+        DUP @ F_HIDDEN OR SWAP !
 ;
 
 ( MEMORY  ------------------------------------------------------------------ )

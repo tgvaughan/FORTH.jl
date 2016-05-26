@@ -620,6 +620,19 @@ EMIT = defPrimWord("EMIT", () -> begin
     return NEXT
 end)
 
+function raw_mode!(mode::Bool)
+    if ccall(:jl_tty_set_mode, Int32, (Ptr{Void}, Int32), STDIN.handle, mode) != 0
+        throw("FATAL: Terminal unable to enter raw mode.")
+    end
+end
+
+KEY = defPrimWord("KEY", () -> begin
+    raw_mode!(true)
+    pushPS(Int(readbytes(STDIN, 1)[1]))
+    raw_mode!(false)
+    return NEXT
+end)
+
 SPAN, SPAN_CFA = defNewVar("SPAN", 0)
 EXPECT = defPrimWord("EXPECT", () -> begin
     maxLen = popPS()
