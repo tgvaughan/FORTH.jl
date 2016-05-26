@@ -607,8 +607,8 @@ sources = Array{Any,1}()
 currentSource() = sources[length(sources)]
 
 EOF = defPrimWord("\x04", () -> begin
-    close(pop!(sources))
-    if !isempty(sources)
+    if currentSource() != STDIN
+        close(pop!(sources))
         return NEXT
     else
         return 0
@@ -626,26 +626,81 @@ function raw_mode!(mode::Bool)
     end
 end
 
-KEY = defPrimWord("KEY", () -> begin
+function getKey()
     raw_mode!(true)
-    pushPS(Int(readbytes(STDIN, 1)[1]))
+    byte = readbytes(STDIN, 1)[1]
     raw_mode!(false)
+
+    if byte == 0x0d
+        return 0x0a
+    elseif byte == 127
+        return 0x08
+    else
+        return byte
+    end
+end
+
+KEY = defPrimWord("KEY", () -> begin
+    pushPS(Int(getKey()))
     return NEXT
 end)
+
+function getLineFromSTDIN()
+    line = ""
+    while true
+        key = Char(getKey())
+
+        if key == '\n'
+            print(" ")
+            return ASCIIString(line)
+
+        elseif key == '\x04'
+            if isempty(line)
+                return string("\x04")
+            end
+
+        elseif key == '\b'
+            if !isempty(line)
+                line = line[1:length(line)-1]
+                print("\b \b")
+            end
+
+        elseif key == '\e'
+            # Strip ANSI escape sequence
+            nextKey = Char(getKey())
+            if nextKey == '['
+                while true
+                    nextKey = Char(getKey())
+                    if nextKey >= '@' || nextKey <= '~'
+                        break
+                    end
+                end
+            end
+
+        else
+            print(key)
+            line = string(line, key)
+        end
+    end
+end
 
 SPAN, SPAN_CFA = defNewVar("SPAN", 0)
 EXPECT = defPrimWord("EXPECT", () -> begin
     maxLen = popPS()
     addr = popPS()
 
-    if !eof(currentSource())
-        line = chomp(readline(currentSource()))
-        mem[SPAN] = min(length(line), maxLen)
-        putString(line[1:mem[SPAN]], addr)
+    if currentSource() == STDIN
+        line = getLineFromSTDIN()
     else
-        mem[SPAN] = 1
-        mem[addr] = 4 # eof
+        if !eof(currentSource())
+            line = chomp(readline(currentSource()))
+        else
+            line = "\x04" # eof
+        end
     end
+
+    mem[SPAN] = min(length(line), maxLen)
+    putString(line[1:mem[SPAN]], addr)
 
     return NEXT
 end)
@@ -855,7 +910,7 @@ PARSE = defPrimWord("PARSE", () -> begin
 end)
 
 BYE = defPrimWord("BYE", () -> begin
-    println("Bye!")
+    println("\nBye!")
     return 0
 end)
 
@@ -1131,6 +1186,7 @@ DUMP = defPrimWord("DUMP", () -> begin
     count = popPS()
     addr = popPS()
 
+    println()
     dump(addr, count=count)
 
     return NEXT

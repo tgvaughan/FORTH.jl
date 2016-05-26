@@ -76,6 +76,8 @@
 ( Draw the Mandelbrot Set!)
 : mandeldraw ( x1 y1 x2 y2 -- )
 
+    cr
+
     0 pick 3 pick - ysteps /
     1 pick 4 pick do
 
@@ -106,4 +108,4 @@ hide *
         mandeldraw
 ;
 
-.( Enter 'mandel' to draw the Mandelbrot Set.)
+CR .( Enter 'mandel' to draw the Mandelbrot Set.)

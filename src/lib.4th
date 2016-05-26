@@ -587,6 +587,7 @@ DOES>   @
 ;
 
 : WORDS
+        CR
         LATEST @        ( start at LATEST dictionary entry )
         BEGIN
                 ?DUP            ( while link pointer is not null )
@@ -618,6 +619,8 @@ DOES>   @
 
 : SEE
         BL WORD FIND    ( find the dictionary entry to decompile )
+
+        CR
 
         0= IF
                 ." Word '" COUNT TYPE ." ' not found in dictionary."

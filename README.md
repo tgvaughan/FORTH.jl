@@ -37,14 +37,8 @@ the julia prompt:
 The first thing the interpreter will do is compile the core definitions in
 the library file.  Once this is complete you can start entering forth commands:
 
-    : star 42 emit ;
-     ok
-    star
-    * ok
-
-Notice that unlike other forths, forth.jl echos a newline after reading each
-line of standard input.  This is an unfortunate side-effect of the way that
-I've implemented EXPECT.  Hopefully I'll be able to fix this in future.
+    : star 42 emit ;  ok
+    star * ok
 
 There's an example Mandelbrot Set drawing program included in the examples
 directory.  To run it, you'll have to locate this directory on your system (its
@@ -85,6 +79,8 @@ my system I can run the example in this way:
                                                                        *********                    
                                                                            **                       
     ok
+
+To exit, enter ^D on a blank line or use the `bye` word.
 
 ## License
 
