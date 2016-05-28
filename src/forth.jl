@@ -8,27 +8,7 @@ size_RS = 1000   # Return stack size
 size_PS = 1000   # Parameter stack size
 size_TIB = 1000  # Terminal input buffer size
 
-# The mem array constitutes the memory of the VM. It has the following geography:
-#
-# mem = +-----------------------+
-#       | Built-in Variables    |
-#       +-----------------------+
-#       | Return Stack          |
-#       +-----------------------+
-#       | Parameter Stack       |
-#       +-----------------------+
-#       | Terminal Input Buffer |
-#       +-----------------------+
-#       | Dictionary            |
-#       +-----------------------+
-#
-# Note that all words (user-defined, primitive, variables, etc) are included in
-# the dictionary.
-#
-# Simple linear addressing is used with one exception: references to primitive code
-# blocks, which are represented as anonymous functions, appear as negative indicies
-# into the primitives array which contains these functions.
-
+# Memory arrays
 mem = Array{Int64,1}(size_mem)
 primitives = Array{Function,1}()
 primNames = Array{ASCIIString,1}()
@@ -58,24 +38,15 @@ reg = Reg(RSP0, PSP0, 0, 0)
 
 # Stack manipulation functions
 
-type ParamStackUnderflow <: Exception end
-type ReturnStackUnderflow <: Exception end
-
-Base.showerror(io::IO, ex::ParamStackUnderflow) = print(io, "Parameter stack underflow.")
-Base.showerror(io::IO, ex::ReturnStackUnderflow) = print(io, "Return stack underflow.")
-
-getRSDepth() = reg.RSP - RSP0
-getPSDepth() = reg.PSP - PSP0
-
 function ensurePSDepth(depth::Int64)
-    if getPSDepth()<depth
-        throw(ParamStackUnderflow())
+    if reg.PSP - PSP0 < depth
+        error("Parameter stack underflow.")
     end
 end
 
 function ensureRSDepth(depth::Int64)
-    if getRSDepth()<depth
-        throw(ReturnStackUnderflow())
+    if reg.RSP - RSP0 < depth
+        error("Return stack underflow.")
     end
 end
 
@@ -227,7 +198,7 @@ DOCON = defPrim(() -> begin
     return NEXT
 end, name="DOVAR")
 
-EXIT = defPrimWord("EXIT", () -> begin
+EXIT_CFA = defPrimWord("EXIT", () -> begin
     reg.IP = popRS()
     return NEXT
 end)
@@ -254,12 +225,12 @@ NFA_MARK_CFA = defConst("NFA_MARK", NFA_MARK)
 
 # Basic forth primitives
 
-DROP = defPrimWord("DROP", () -> begin
+DROP_CFA = defPrimWord("DROP", () -> begin
     popPS()
     return NEXT
 end)
 
-SWAP = defPrimWord("SWAP", () -> begin
+SWAP_CFA = defPrimWord("SWAP", () -> begin
     a = popPS()
     b = popPS()
     pushPS(a)
@@ -267,19 +238,19 @@ SWAP = defPrimWord("SWAP", () -> begin
     return NEXT
 end)
 
-DUP = defPrimWord("DUP", () -> begin
+DUP_CFA = defPrimWord("DUP", () -> begin
     ensurePSDepth(1)
     pushPS(mem[reg.PSP])
     return NEXT
 end)
 
-OVER = defPrimWord("OVER", () -> begin
+OVER_CFA = defPrimWord("OVER", () -> begin
     ensurePSDepth(2)
     pushPS(mem[reg.PSP-1])
     return NEXT
 end)
 
-ROT = defPrimWord("ROT", () -> begin
+ROT_CFA = defPrimWord("ROT", () -> begin
     a = popPS()
     b = popPS()
     c = popPS()
@@ -289,7 +260,7 @@ ROT = defPrimWord("ROT", () -> begin
     return NEXT
 end)
 
-NROT = defPrimWord("-ROT", () -> begin
+NROT_CFA = defPrimWord("-ROT", () -> begin
     a = popPS()
     b = popPS()
     c = popPS()
@@ -300,13 +271,13 @@ NROT = defPrimWord("-ROT", () -> begin
 end)
 
 
-TWODROP = defPrimWord("2DROP", () -> begin
+TWODROP_CFA = defPrimWord("2DROP", () -> begin
     popPS()
     popPS()
     return NEXT
 end)
 
-TWODUP = defPrimWord("2DUP", () -> begin
+TWODUP_CFA = defPrimWord("2DUP", () -> begin
     ensurePSDepth(2)
     a = mem[reg.PSP-1]
     b = mem[reg.PSP]
@@ -315,7 +286,7 @@ TWODUP = defPrimWord("2DUP", () -> begin
     return NEXT
 end)
 
-TWOSWAP = defPrimWord("2SWAP", () -> begin
+TWOSWAP_CFA = defPrimWord("2SWAP", () -> begin
     a = popPS()
     b = popPS()
     c = popPS()
@@ -327,7 +298,7 @@ TWOSWAP = defPrimWord("2SWAP", () -> begin
     return NEXT
 end)
 
-TWOOVER = defPrimWord("2OVER", () -> begin
+TWOOVER_CFA = defPrimWord("2OVER", () -> begin
     ensurePSDepth(4)
     a = mem[reg.PSP-3]
     b = mem[reg.PSP-2]
@@ -336,7 +307,7 @@ TWOOVER = defPrimWord("2OVER", () -> begin
     return NEXT
 end)
 
-QDUP = defPrimWord("?DUP", () -> begin
+QDUP_CFA = defPrimWord("?DUP", () -> begin
     ensurePSDepth(1)
     val = mem[reg.PSP]
     if val != 0
@@ -345,52 +316,52 @@ QDUP = defPrimWord("?DUP", () -> begin
     return NEXT
 end)
 
-INCR = defPrimWord("1+", () -> begin
+INCR_CFA = defPrimWord("1+", () -> begin
     ensurePSDepth(1)
     mem[reg.PSP] += 1
     return NEXT
 end)
 
-DECR = defPrimWord("1-", () -> begin
+DECR_CFA = defPrimWord("1-", () -> begin
     ensurePSDepth(1)
     mem[reg.PSP] -= 1
     return NEXT
 end)
 
-INCR2 = defPrimWord("2+", () -> begin
+INCR2_CFA = defPrimWord("2+", () -> begin
     ensurePSDepth(1)
     mem[reg.PSP] += 2
     return NEXT
 end)
 
-DECR2 = defPrimWord("2-", () -> begin
+DECR2_CFA = defPrimWord("2-", () -> begin
     ensurePSDepth(1)
     mem[reg.PSP] -= 2
     return NEXT
 end)
 
-ADD = defPrimWord("+", () -> begin
+ADD_CFA = defPrimWord("+", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a+b)
     return NEXT
 end)
 
-SUB = defPrimWord("-", () -> begin
+SUB_CFA = defPrimWord("-", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a-b)
     return NEXT
 end)
 
-MUL = defPrimWord("*", () -> begin
+MUL_CFA = defPrimWord("*", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a*b)
     return NEXT
 end)
 
-DIVMOD = defPrimWord("/MOD", () -> begin
+DIVMOD_CFA = defPrimWord("/MOD", () -> begin
     b = popPS()
     a = popPS()
     q,r = divrem(a,b)
@@ -399,117 +370,117 @@ DIVMOD = defPrimWord("/MOD", () -> begin
     return NEXT
 end)
 
-TWOMUL = defPrimWord("2*", () -> begin
+TWOMUL_CFA = defPrimWord("2*", () -> begin
     pushPS(popPS() << 1)
     return NEXT
 end)
 
-TWODIV = defPrimWord("2/", () -> begin
+TWODIV_CFA = defPrimWord("2/", () -> begin
     pushPS(popPS() >> 1)
     return NEXT
 end)
 
-EQ = defPrimWord("=", () -> begin
+EQ_CFA = defPrimWord("=", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a==b ? -1 : 0)
     return NEXT
 end)
 
-NE = defPrimWord("<>", () -> begin
+NE_CFA = defPrimWord("<>", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a!=b ? -1 : 0)
     return NEXT
 end)
 
-LT = defPrimWord("<", () -> begin
+LT_CFA = defPrimWord("<", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a<b ? -1 : 0)
     return NEXT
 end)
 
-GT = defPrimWord(">", () -> begin
+GT_CFA = defPrimWord(">", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a>b ? -1 : 0)
     return NEXT
 end)
 
-LE = defPrimWord("<=", () -> begin
+LE_CFA = defPrimWord("<=", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a<=b ? -1 : 0)
     return NEXT
 end)
 
-GE = defPrimWord(">=", () -> begin
+GE_CFA = defPrimWord(">=", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a>=b ? -1 : 0)
     return NEXT
 end)
 
-ZE = defPrimWord("0=", () -> begin
+ZE_CFA = defPrimWord("0=", () -> begin
     pushPS(popPS() == 0 ? -1 : 0)
     return NEXT
 end)
 
-ZNE = defPrimWord("0<>", () -> begin
+ZNE_CFA = defPrimWord("0<>", () -> begin
     pushPS(popPS() != 0 ? -1 : 0)
     return NEXT
 end)
 
-ZLT = defPrimWord("0<", () -> begin
+ZLT_CFA = defPrimWord("0<", () -> begin
     pushPS(popPS() < 0 ? -1 : 0)
     return NEXT
 end)
 
-ZGT = defPrimWord("0>", () -> begin
+ZGT_CFA = defPrimWord("0>", () -> begin
     pushPS(popPS() > 0 ? -1 : 0)
     return NEXT
 end)
 
-ZLE = defPrimWord("0<=", () -> begin
+ZLE_CFA = defPrimWord("0<=", () -> begin
     pushPS(popPS() <= 0 ? -1 : 0)
     return NEXT
 end)
 
-ZGE = defPrimWord("0>=", () -> begin
+ZGE_CFA = defPrimWord("0>=", () -> begin
     pushPS(popPS() >= 0 ? -1 : 0)
     return NEXT
 end)
 
-AND = defPrimWord("AND", () -> begin
+AND_CFA = defPrimWord("AND", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a & b)
     return NEXT
 end)
 
-OR = defPrimWord("OR", () -> begin
+OR_CFA = defPrimWord("OR", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a | b)
     return NEXT
 end)
 
-XOR = defPrimWord("XOR", () -> begin
+XOR_CFA = defPrimWord("XOR", () -> begin
     b = popPS()
     a = popPS()
     pushPS(a $ b)
     return NEXT
 end)
 
-INVERT = defPrimWord("INVERT", () -> begin
+INVERT_CFA = defPrimWord("INVERT", () -> begin
     pushPS(~popPS())
     return NEXT
 end)
 
 # Literals
 
-LIT = defPrimWord("LIT", () -> begin
+LIT_CFA = defPrimWord("LIT", () -> begin
     pushPS(mem[reg.IP])
     reg.IP += 1
     return NEXT
@@ -517,27 +488,27 @@ end)
 
 # Memory primitives
 
-STORE = defPrimWord("!", () -> begin
+STORE_CFA = defPrimWord("!", () -> begin
     addr = popPS()
     dat = popPS()
     mem[addr] = dat
     return NEXT
 end)
 
-FETCH = defPrimWord("@", () -> begin
+FETCH_CFA = defPrimWord("@", () -> begin
     addr = popPS()
     pushPS(mem[addr])
     return NEXT
 end)
 
-ADDSTORE = defPrimWord("+!", () -> begin
+ADDSTORE_CFA = defPrimWord("+!", () -> begin
     addr = popPS()
     toAdd = popPS()
     mem[addr] += toAdd
     return NEXT
 end)
 
-SUBSTORE = defPrimWord("-!", () -> begin
+SUBSTORE_CFA = defPrimWord("-!", () -> begin
     addr = popPS()
     toSub = popPS()
     mem[addr] -= toSub
@@ -547,56 +518,56 @@ end)
 
 # Return Stack
 
-TOR = defPrimWord(">R", () -> begin
+TOR_CFA = defPrimWord(">R", () -> begin
     pushRS(popPS())
     return NEXT
 end)
 
-FROMR = defPrimWord("R>", () -> begin
+FROMR_CFA = defPrimWord("R>", () -> begin
     pushPS(popRS())
     return NEXT
 end)
 
-RFETCH = defPrimWord("R@", () -> begin
+RFETCH_CFA = defPrimWord("R@", () -> begin
     pushPS(mem[reg.RSP])
     return NEXT
 end)
 
-RSPFETCH = defPrimWord("RSP@", () -> begin
+RSPFETCH_CFA = defPrimWord("RSP@", () -> begin
     pushPS(reg.RSP)
     return NEXT
 end)
 
-RSPSTORE = defPrimWord("RSP!", () -> begin
+RSPSTORE_CFA = defPrimWord("RSP!", () -> begin
     reg.RSP = popPS()
     return NEXT
 end)
 
-RDROP = defPrimWord("RDROP", () -> begin
+RDROP_CFA = defPrimWord("RDROP", () -> begin
     popRS()
     return NEXT
 end)
 
 # Parameter Stack
 
-PSPFETCH = defPrimWord("PSP@", () -> begin
+PSPFETCH_CFA = defPrimWord("PSP@", () -> begin
     pushPS(reg.PSP)
     return NEXT
 end)
 
-PSPSTORE = defPrimWord("PSP!", () -> begin
+PSPSTORE_CFA = defPrimWord("PSP!", () -> begin
     reg.PSP = popPS()
     return NEXT
 end)
 
 # Working Register
 
-WFETCH = defPrimWord("W@", () -> begin
+WFETCH_CFA = defPrimWord("W@", () -> begin
     pushPS(reg.W)
     return NEXT
 end)
 
-WSTORE = defPrimWord("W!", () -> begin
+WSTORE_CFA = defPrimWord("W!", () -> begin
     reg.W = popPS()
     return NEXT
 end)
@@ -606,7 +577,7 @@ end)
 sources = Array{Any,1}()
 currentSource() = sources[length(sources)]
 
-EOF = defPrimWord("\x04", () -> begin
+EOF_CFA = defPrimWord("\x04", () -> begin
     if currentSource() != STDIN
         close(pop!(sources))
         return NEXT
@@ -615,7 +586,7 @@ EOF = defPrimWord("\x04", () -> begin
     end
 end)
 
-EMIT = defPrimWord("EMIT", () -> begin
+EMIT_CFA = defPrimWord("EMIT", () -> begin
     print(Char(popPS()))
     return NEXT
 end)
@@ -640,7 +611,7 @@ function getKey()
     end
 end
 
-KEY = defPrimWord("KEY", () -> begin
+KEY_CFA = defPrimWord("KEY", () -> begin
     pushPS(Int(getKey()))
     return NEXT
 end)
@@ -685,7 +656,7 @@ function getLineFromSTDIN()
 end
 
 SPAN, SPAN_CFA = defNewVar("SPAN", 0)
-EXPECT = defPrimWord("EXPECT", () -> begin
+EXPECT_CFA = defPrimWord("EXPECT", () -> begin
     maxLen = popPS()
     addr = popPS()
 
@@ -706,7 +677,7 @@ EXPECT = defPrimWord("EXPECT", () -> begin
 end)
 
 BASE, BASE_CFA = defNewVar("BASE", 10)
-NUMBER = defPrimWord("NUMBER", () -> begin
+NUMBER_CFA = defPrimWord("NUMBER", () -> begin
     wordAddr = popPS()+1
     wordLen = mem[wordAddr-1]
 
@@ -719,7 +690,7 @@ end)
 
 # Dictionary searches
 
-TOCFA = defPrimWord(">CFA", () -> begin
+TOCFA_CFA = defPrimWord(">CFA", () -> begin
 
     addr = popPS()
     lenAndFlags = mem[addr+1]
@@ -730,9 +701,9 @@ TOCFA = defPrimWord(">CFA", () -> begin
     return NEXT
 end)
 
-TOBODY = defWord(">BODY", [INCR, EXIT])
+TOBODY_CFA = defWord(">BODY", [INCR_CFA, EXIT_CFA])
 
-FIND = defPrimWord("FIND", () -> begin
+FIND_CFA = defPrimWord("FIND", () -> begin
 
     countedAddr = popPS()
     wordAddr = countedAddr + 1
@@ -762,7 +733,7 @@ FIND = defPrimWord("FIND", () -> begin
 
     if latest > 0
         pushPS(latest)
-        callPrim(mem[TOCFA])
+        callPrim(mem[TOCFA_CFA])
         if (lenAndFlags & F_IMMED) == F_IMMED
             pushPS(1)
         else
@@ -779,12 +750,12 @@ end)
 
 # Branching
 
-BRANCH = defPrimWord("BRANCH", () -> begin
+BRANCH_CFA = defPrimWord("BRANCH", () -> begin
     reg.IP += mem[reg.IP]
     return NEXT
 end)
 
-ZBRANCH = defPrimWord("0BRANCH", () -> begin
+ZBRANCH_CFA = defPrimWord("0BRANCH", () -> begin
     if (popPS() == 0)
         reg.IP += mem[reg.IP]
     else
@@ -796,7 +767,7 @@ end)
 
 # Strings
 
-LITSTRING = defPrimWord("LITSTRING", () -> begin
+LITSTRING_CFA = defPrimWord("LITSTRING", () -> begin
     len = mem[reg.IP]
     reg.IP += 1
     pushPS(reg.IP)
@@ -806,7 +777,7 @@ LITSTRING = defPrimWord("LITSTRING", () -> begin
     return NEXT
 end)
 
-TYPE = defPrimWord("TYPE", () -> begin
+TYPE_CFA = defPrimWord("TYPE", () -> begin
     len = popPS()
     addr = popPS()
     str = getString(addr, len)
@@ -816,27 +787,17 @@ end)
 
 # Outer interpreter
 
-TRACE = defPrimWord("TRACE", () -> begin
-    println("reg.W: $(reg.W) reg.IP: $(reg.IP)")
-    print("PS: "); printPS()
-    print("RS: "); printRS()
-    print("[paused]")
-    readline()
-
-    return NEXT
-end)
-
-COMMA = defPrimWord(",", () -> begin
+COMMA_CFA = defPrimWord(",", () -> begin
     mem[mem[H]] = popPS()
     mem[H] += 1
 
     return NEXT
 end)
 
-BTICK = defWord("[']",
-    [FROMR, DUP, INCR, TOR, FETCH, EXIT])
+BTICK_CFA = defWord("[']",
+    [FROMR_CFA, DUP_CFA, INCR_CFA, TOR_CFA, FETCH_CFA, EXIT_CFA])
 
-EXECUTE = defPrimWord("EXECUTE", () -> begin
+EXECUTE_CFA = defPrimWord("EXECUTE", () -> begin
     reg.W = popPS()
     return mem[reg.W]
 end)
@@ -845,13 +806,13 @@ TIB_CFA = defConst("TIB", TIB)
 NUMTIB, NUMTIB_CFA = defNewVar("#TIB", 0)
 TOIN, TOIN_CFA = defNewVar(">IN", 0)
 
-QUERY = defWord("QUERY",
-    [TIB_CFA, LIT, 160, EXPECT,
-    SPAN_CFA, FETCH, NUMTIB_CFA, STORE,
-    LIT, 0, TOIN_CFA, STORE,
-    EXIT])
+QUERY_CFA = defWord("QUERY",
+    [TIB_CFA, LIT_CFA, 160, EXPECT_CFA,
+    SPAN_CFA, FETCH_CFA, NUMTIB_CFA, STORE_CFA,
+    LIT_CFA, 0, TOIN_CFA, STORE_CFA,
+    EXIT_CFA])
 
-WORD = defPrimWord("WORD", () -> begin
+WORD_CFA = defPrimWord("WORD", () -> begin
     delim = popPS()
 
     # Chew up initial occurrences of delim
@@ -883,7 +844,7 @@ WORD = defPrimWord("WORD", () -> begin
     return NEXT
 end)
 
-PARSE = defPrimWord("PARSE", () -> begin
+PARSE_CFA = defPrimWord("PARSE", () -> begin
     delim = popPS()
 
     # Chew up initial occurrences of delim
@@ -909,47 +870,46 @@ PARSE = defPrimWord("PARSE", () -> begin
     return NEXT
 end)
 
-BYE = defPrimWord("BYE", () -> begin
+BYE_CFA = defPrimWord("BYE", () -> begin
     println("\nBye!")
     return 0
 end)
 
 STATE, STATE_CFA = defNewVar("STATE", 0)
 
-INTERPRET = defWord("INTERPRET",
-    [LIT, 32, WORD, # Read next space-delimited word
+INTERPRET_CFA = defWord("INTERPRET",
+    [LIT_CFA, 32, WORD_CFA, # Read next space-delimited word
 
-    DUP, FETCH, ZE, ZBRANCH, 3,
-        DROP, EXIT, # Exit if TIB is exhausted
+    DUP_CFA, FETCH_CFA, ZE_CFA, ZBRANCH_CFA, 3,
+        DROP_CFA, EXIT_CFA, # Exit if TIB is exhausted
 
-    STATE_CFA, FETCH, ZBRANCH, 24,
+    STATE_CFA, FETCH_CFA, ZBRANCH_CFA, 24,
         # Compiling
-        FIND, QDUP, ZBRANCH, 13,
+        FIND_CFA, QDUP_CFA, ZBRANCH_CFA, 13,
 
             # Found word. 
-            LIT, -1, EQ, INVERT, ZBRANCH, 4,
+            LIT_CFA, -1, EQ_CFA, INVERT_CFA, ZBRANCH_CFA, 4,
 
                 # Immediate: Execute!
-                EXECUTE, BRANCH, -26,
+                EXECUTE_CFA, BRANCH_CFA, -26,
 
                 # Not immediate: Compile!
-                COMMA, BRANCH, -29,
+                COMMA_CFA, BRANCH_CFA, -29,
 
             # No word found, parse number
-            NUMBER, BTICK, LIT, COMMA, COMMA, BRANCH, -36,
+            NUMBER_CFA, BTICK_CFA, LIT_CFA, COMMA_CFA, COMMA_CFA, BRANCH_CFA, -36,
         
        # Interpreting
-        FIND, QDUP, ZBRANCH, 5,
+        FIND_CFA, QDUP_CFA, ZBRANCH_CFA, 5,
 
             # Found word. Execute!
-            DROP, EXECUTE, BRANCH, -44,
+            DROP_CFA, EXECUTE_CFA, BRANCH_CFA, -44,
 
             # No word found, parse number and leave on stack
-            NUMBER, BRANCH, -47,
-    EXIT]
-)
+            NUMBER_CFA, BRANCH_CFA, -47,
+    EXIT_CFA])
 
-PROMPT = defPrimWord("PROMPT", () -> begin
+PROMPT_CFA = defPrimWord("PROMPT", () -> begin
     if (mem[STATE] == 0 && currentSource() == STDIN)
         println(" ok")
     end
@@ -957,20 +917,20 @@ PROMPT = defPrimWord("PROMPT", () -> begin
     return NEXT
 end)
 
-QUIT = defWord("QUIT",
-    [LIT, 0, STATE_CFA, STORE,
-    LIT, 0, NUMTIB_CFA, STORE,
-    RSP0_CFA, RSPSTORE,
-    QUERY,
-    INTERPRET, PROMPT,
-    BRANCH,-4])
+QUIT_CFA = defWord("QUIT",
+    [LIT_CFA, 0, STATE_CFA, STORE_CFA,
+    LIT_CFA, 0, NUMTIB_CFA, STORE_CFA,
+    RSP0_CFA, RSPSTORE_CFA,
+    QUERY_CFA,
+    INTERPRET_CFA, PROMPT_CFA,
+    BRANCH_CFA,-4])
 
-ABORT = defWord("ABORT",
-    [PSP0_CFA, PSPSTORE, QUIT])
+ABORT_CFA = defWord("ABORT",
+    [PSP0_CFA, PSPSTORE_CFA, QUIT_CFA])
 
-INCLUDE = defPrimWord("INCLUDE", () -> begin
+INCLUDE_CFA = defPrimWord("INCLUDE", () -> begin
     pushPS(32)
-    callPrim(mem[WORD])
+    callPrim(mem[WORD_CFA])
     wordAddr = popPS()+1
     wordLen = mem[wordAddr-1]
     word = getString(wordAddr, wordLen)
@@ -985,10 +945,10 @@ end)
 
 # Compilation
 
-HERE = defWord("HERE",
-    [H_CFA, FETCH, EXIT])
+HERE_CFA = defWord("HERE",
+    [H_CFA, FETCH_CFA, EXIT_CFA])
 
-HEADER = defPrimWord("HEADER", () -> begin
+HEADER_CFA = defPrimWord("HEADER", () -> begin
     wordAddr = popPS()+1
     wordLen = mem[wordAddr-1]
     word = getString(wordAddr, wordLen)
@@ -998,10 +958,10 @@ HEADER = defPrimWord("HEADER", () -> begin
     return NEXT
 end)
 
-CREATE = defWord("CREATE",
-    [LIT, 32, WORD, HEADER,
-    LIT, DOVAR, COMMA,
-    EXIT])
+CREATE_CFA = defWord("CREATE",
+    [LIT_CFA, 32, WORD_CFA, HEADER_CFA,
+    LIT_CFA, DOVAR, COMMA_CFA,
+    EXIT_CFA])
 
 DODOES = defPrim(() -> begin
     pushRS(reg.IP)
@@ -1010,10 +970,10 @@ DODOES = defPrim(() -> begin
     return NEXT
 end, name="DODOES")
 
-DOES_HELPER = defPrimWord("(DOES>)", () -> begin
+DOES_HELPER_CFA = defPrimWord("(DOES>)", () -> begin
 
     pushPS(mem[LATEST])
-    callPrim(mem[TOCFA])
+    callPrim(mem[TOCFA_CFA])
     cfa = popPS()
 
     runtimeAddr = popPS()
@@ -1026,42 +986,42 @@ DOES_HELPER = defPrimWord("(DOES>)", () -> begin
     return NEXT
 end, flags=F_IMMED)
 
-DOES = defWord("DOES>",
-    [BTICK, LIT, COMMA, HERE, LIT, 3, ADD, COMMA,
-    BTICK, DOES_HELPER, COMMA, BTICK, EXIT, COMMA, EXIT],
+DOES_CFA = defWord("DOES>",
+    [BTICK_CFA, LIT_CFA, COMMA_CFA, HERE_CFA, LIT_CFA, 3, ADD_CFA, COMMA_CFA,
+    BTICK_CFA, DOES_HELPER_CFA, COMMA_CFA, BTICK_CFA, EXIT_CFA, COMMA_CFA, EXIT_CFA],
     flags=F_IMMED)
 
-LBRAC = defPrimWord("[", () -> begin
+LBRAC_CFA = defPrimWord("[", () -> begin
     mem[STATE] = 0
     return NEXT
 end, flags=F_IMMED)
 
-RBRAC = defPrimWord("]", () -> begin
+RBRAC_CFA = defPrimWord("]", () -> begin
     mem[STATE] = 1
     return NEXT
 end, flags=F_IMMED)
 
-HIDDEN = defPrimWord("HIDDEN", () -> begin
+HIDDEN_CFA = defPrimWord("HIDDEN", () -> begin
     lenAndFlagsAddr = mem[LATEST] + 1
     mem[lenAndFlagsAddr] = mem[lenAndFlagsAddr] $ F_HIDDEN
     return NEXT
 end)
 
-COLON = defWord(":",
-    [LIT, 32, WORD,
-    HEADER,
-    LIT, DOCOL, COMMA,
-    HIDDEN,
-    RBRAC,
-    EXIT])
+COLON_CFA = defWord(":",
+    [LIT_CFA, 32, WORD_CFA,
+    HEADER_CFA,
+    LIT_CFA, DOCOL, COMMA_CFA,
+    HIDDEN_CFA,
+    RBRAC_CFA,
+    EXIT_CFA])
 
-SEMICOLON = defWord(";",
-    [LIT, EXIT, COMMA,
-    HIDDEN,
-    LBRAC,
-    EXIT], flags=F_IMMED)
+SEMICOLON_CFA = defWord(";",
+    [LIT_CFA, EXIT_CFA, COMMA_CFA,
+    HIDDEN_CFA,
+    LBRAC_CFA,
+    EXIT_CFA], flags=F_IMMED)
 
-IMMEDIATE = defPrimWord("IMMEDIATE", () -> begin
+IMMEDIATE_CFA = defPrimWord("IMMEDIATE", () -> begin
     lenAndFlagsAddr = mem[LATEST] + 1
     mem[lenAndFlagsAddr] = mem[lenAndFlagsAddr] $ F_IMMED
     return NEXT
@@ -1094,7 +1054,7 @@ function run(;initialize=true)
     end
 
     # Start with IP pointing to first instruction of outer interpreter
-    reg.IP = QUIT + 1
+    reg.IP = QUIT_CFA + 1
 
     # Primitive processing loop.
     # Everyting else is simply a consequence of this loop!
@@ -1113,13 +1073,23 @@ function run(;initialize=true)
             end
 
             # QUIT
-            reg.IP = ABORT + 1
+            reg.IP = ABORT_CFA + 1
             jmp = NEXT
         end
     end
 end
 
 # Debugging tools
+
+TRACE_CFA = defPrimWord("TRACE", () -> begin
+    println("reg.W: $(reg.W) reg.IP: $(reg.IP)")
+    print("PS: "); printPS()
+    print("RS: "); printRS()
+    print("[paused]")
+    readline()
+
+    return NEXT
+end)
 
 function dump(startAddr::Int64; count::Int64 = 100, cellsPerLine::Int64 = 10)
     chars = Array{Char,1}(cellsPerLine)
