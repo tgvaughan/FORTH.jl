@@ -44,9 +44,12 @@
 : SPACE BL emit ;
 
 : ' BL WORD FIND DROP ;
-: [COMPILE] IMMEDIATE ' , ;
 : ['] IMMEDIATE
      LIT LIT , ' , ;
+
+: [COMPILE] IMMEDIATE ' , ;
+: COMPILE IMMEDIATE
+    LIT LIT , ' , LIT , , ;
 
 : LITERAL IMMEDIATE ['] LIT , , ;
 
