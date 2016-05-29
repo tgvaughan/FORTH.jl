@@ -840,9 +840,6 @@ COMMA_CFA = defPrimWord(",", () -> begin
     return NEXT
 end)
 
-BTICK_CFA = defWord("[']",
-    [FROMR_CFA, DUP_CFA, INCR_CFA, TOR_CFA, FETCH_CFA, EXIT_CFA])
-
 HERE_CFA = defWord("HERE",
     [H_CFA, FETCH_CFA, EXIT_CFA])
 
@@ -885,8 +882,8 @@ DOES_HELPER_CFA = defPrimWord("(DOES>)", () -> begin
 end, flags=F_IMMED)
 
 DOES_CFA = defWord("DOES>",
-    [BTICK_CFA, LIT_CFA, COMMA_CFA, HERE_CFA, LIT_CFA, 3, ADD_CFA, COMMA_CFA,
-    BTICK_CFA, DOES_HELPER_CFA, COMMA_CFA, BTICK_CFA, EXIT_CFA, COMMA_CFA, EXIT_CFA],
+    [LIT_CFA, LIT_CFA, COMMA_CFA, HERE_CFA, LIT_CFA, 3, ADD_CFA, COMMA_CFA,
+    LIT_CFA, DOES_HELPER_CFA, COMMA_CFA, LIT_CFA, EXIT_CFA, COMMA_CFA, EXIT_CFA],
     flags=F_IMMED)
 
 LBRAC_CFA = defPrimWord("[", () -> begin
@@ -952,7 +949,7 @@ INTERPRET_CFA = defWord("INTERPRET",
                 COMMA_CFA, BRANCH_CFA, -29,
 
             # No word found, parse number
-            NUMBER_CFA, BTICK_CFA, LIT_CFA, COMMA_CFA, COMMA_CFA, BRANCH_CFA, -36,
+            NUMBER_CFA, LIT_CFA, LIT_CFA, COMMA_CFA, COMMA_CFA, BRANCH_CFA, -36,
         
        # Interpreting
         FIND_CFA, QDUP_CFA, ZBRANCH_CFA, 5,

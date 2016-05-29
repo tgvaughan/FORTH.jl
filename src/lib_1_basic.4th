@@ -40,24 +40,20 @@
 
 : '\n' 10 ;
 : BL 32 ;
-
-: LITERAL IMMEDIATE ['] LIT , , ;
+: CR '\n' emit ;
+: SPACE BL emit ;
 
 : ' BL WORD FIND DROP ;
+: [COMPILE] IMMEDIATE ' , ;
+: ['] IMMEDIATE
+     LIT LIT , ' , ;
+
+: LITERAL IMMEDIATE ['] LIT , , ;
 
 : CHAR BL WORD 1+ @ ;
 : [CHAR] IMMEDIATE
     CHAR
     ['] LIT , ,
-;
-
-: CR '\n' emit ;
-: SPACE BL emit ;
-
-: [COMPILE] IMMEDIATE
-        BL WORD         \ get the next word
-        FIND DROP       \ find it in the dictionary
-        ,               \ and compile that
 ;
 
 : RECURSE IMMEDIATE
