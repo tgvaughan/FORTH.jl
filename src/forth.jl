@@ -785,22 +785,7 @@ TYPE_CFA = defPrimWord("TYPE", () -> begin
     return NEXT
 end)
 
-# Outer interpreter
-
-COMMA_CFA = defPrimWord(",", () -> begin
-    mem[mem[H]] = popPS()
-    mem[H] += 1
-
-    return NEXT
-end)
-
-BTICK_CFA = defWord("[']",
-    [FROMR_CFA, DUP_CFA, INCR_CFA, TOR_CFA, FETCH_CFA, EXIT_CFA])
-
-EXECUTE_CFA = defPrimWord("EXECUTE", () -> begin
-    reg.W = popPS()
-    return mem[reg.W]
-end)
+# Interpreter/Compiler-specific I/O
 
 TIB_CFA = defConst("TIB", TIB)
 NUMTIB, NUMTIB_CFA = defNewVar("#TIB", 0)
@@ -844,106 +829,19 @@ WORD_CFA = defPrimWord("WORD", () -> begin
     return NEXT
 end)
 
-PARSE_CFA = defPrimWord("PARSE", () -> begin
-    delim = popPS()
-
-    # Chew up initial occurrences of delim
-    addr = mem[H]
-
-    # Start reading input stream
-    count = 0
-    while (mem[TOIN]<mem[NUMTIB])
-        mem[addr] = mem[TIB+mem[TOIN]]
-        mem[TOIN] += 1
-
-        if (mem[addr] == delim)
-            break
-        end
-
-        count += 1
-        addr += 1
-    end
-
-    pushPS(addr)
-    pushPS(count)
-
-    return NEXT
-end)
-
-BYE_CFA = defPrimWord("BYE", () -> begin
-    println("\nBye!")
-    return 0
-end)
+# Compilation
 
 STATE, STATE_CFA = defNewVar("STATE", 0)
 
-INTERPRET_CFA = defWord("INTERPRET",
-    [LIT_CFA, 32, WORD_CFA, # Read next space-delimited word
-
-    DUP_CFA, FETCH_CFA, ZE_CFA, ZBRANCH_CFA, 3,
-        DROP_CFA, EXIT_CFA, # Exit if TIB is exhausted
-
-    STATE_CFA, FETCH_CFA, ZBRANCH_CFA, 24,
-        # Compiling
-        FIND_CFA, QDUP_CFA, ZBRANCH_CFA, 13,
-
-            # Found word. 
-            LIT_CFA, -1, EQ_CFA, INVERT_CFA, ZBRANCH_CFA, 4,
-
-                # Immediate: Execute!
-                EXECUTE_CFA, BRANCH_CFA, -26,
-
-                # Not immediate: Compile!
-                COMMA_CFA, BRANCH_CFA, -29,
-
-            # No word found, parse number
-            NUMBER_CFA, BTICK_CFA, LIT_CFA, COMMA_CFA, COMMA_CFA, BRANCH_CFA, -36,
-        
-       # Interpreting
-        FIND_CFA, QDUP_CFA, ZBRANCH_CFA, 5,
-
-            # Found word. Execute!
-            DROP_CFA, EXECUTE_CFA, BRANCH_CFA, -44,
-
-            # No word found, parse number and leave on stack
-            NUMBER_CFA, BRANCH_CFA, -47,
-    EXIT_CFA])
-
-PROMPT_CFA = defPrimWord("PROMPT", () -> begin
-    if (mem[STATE] == 0 && currentSource() == STDIN)
-        println(" ok")
-    end
+COMMA_CFA = defPrimWord(",", () -> begin
+    mem[mem[H]] = popPS()
+    mem[H] += 1
 
     return NEXT
 end)
 
-QUIT_CFA = defWord("QUIT",
-    [LIT_CFA, 0, STATE_CFA, STORE_CFA,
-    LIT_CFA, 0, NUMTIB_CFA, STORE_CFA,
-    RSP0_CFA, RSPSTORE_CFA,
-    QUERY_CFA,
-    INTERPRET_CFA, PROMPT_CFA,
-    BRANCH_CFA,-4])
-
-ABORT_CFA = defWord("ABORT",
-    [PSP0_CFA, PSPSTORE_CFA, QUIT_CFA])
-
-INCLUDE_CFA = defPrimWord("INCLUDE", () -> begin
-    pushPS(32)
-    callPrim(mem[WORD_CFA])
-    wordAddr = popPS()+1
-    wordLen = mem[wordAddr-1]
-    word = getString(wordAddr, wordLen)
-
-    push!(sources, open(word, "r"))
-
-    # Clear input buffer
-    mem[NUMTIB] = 0
-
-    return NEXT
-end)
-
-# Compilation
+BTICK_CFA = defWord("[']",
+    [FROMR_CFA, DUP_CFA, INCR_CFA, TOR_CFA, FETCH_CFA, EXIT_CFA])
 
 HERE_CFA = defWord("HERE",
     [H_CFA, FETCH_CFA, EXIT_CFA])
@@ -1026,6 +924,86 @@ IMMEDIATE_CFA = defPrimWord("IMMEDIATE", () -> begin
     mem[lenAndFlagsAddr] = mem[lenAndFlagsAddr] $ F_IMMED
     return NEXT
 end, flags=F_IMMED)
+
+# Outer Interpreter
+
+EXECUTE_CFA = defPrimWord("EXECUTE", () -> begin
+    reg.W = popPS()
+    return mem[reg.W]
+end)
+
+INTERPRET_CFA = defWord("INTERPRET",
+    [LIT_CFA, 32, WORD_CFA, # Read next space-delimited word
+
+    DUP_CFA, FETCH_CFA, ZE_CFA, ZBRANCH_CFA, 3,
+        DROP_CFA, EXIT_CFA, # Exit if TIB is exhausted
+
+    STATE_CFA, FETCH_CFA, ZBRANCH_CFA, 24,
+        # Compiling
+        FIND_CFA, QDUP_CFA, ZBRANCH_CFA, 13,
+
+            # Found word. 
+            LIT_CFA, -1, EQ_CFA, INVERT_CFA, ZBRANCH_CFA, 4,
+
+                # Immediate: Execute!
+                EXECUTE_CFA, BRANCH_CFA, -26,
+
+                # Not immediate: Compile!
+                COMMA_CFA, BRANCH_CFA, -29,
+
+            # No word found, parse number
+            NUMBER_CFA, BTICK_CFA, LIT_CFA, COMMA_CFA, COMMA_CFA, BRANCH_CFA, -36,
+        
+       # Interpreting
+        FIND_CFA, QDUP_CFA, ZBRANCH_CFA, 5,
+
+            # Found word. Execute!
+            DROP_CFA, EXECUTE_CFA, BRANCH_CFA, -44,
+
+            # No word found, parse number and leave on stack
+            NUMBER_CFA, BRANCH_CFA, -47,
+    EXIT_CFA])
+
+PROMPT_CFA = defPrimWord("PROMPT", () -> begin
+    if (mem[STATE] == 0 && currentSource() == STDIN)
+        println(" ok")
+    end
+
+    return NEXT
+end)
+
+QUIT_CFA = defWord("QUIT",
+    [LIT_CFA, 0, STATE_CFA, STORE_CFA,
+    LIT_CFA, 0, NUMTIB_CFA, STORE_CFA,
+    RSP0_CFA, RSPSTORE_CFA,
+    QUERY_CFA,
+    INTERPRET_CFA, PROMPT_CFA,
+    BRANCH_CFA,-4])
+
+ABORT_CFA = defWord("ABORT",
+    [PSP0_CFA, PSPSTORE_CFA, QUIT_CFA])
+
+BYE_CFA = defPrimWord("BYE", () -> begin
+    println("\nBye!")
+    return 0
+end)
+
+# File I/O
+
+INCLUDE_CFA = defPrimWord("INCLUDE", () -> begin
+    pushPS(32)
+    callPrim(mem[WORD_CFA])
+    wordAddr = popPS()+1
+    wordLen = mem[wordAddr-1]
+    word = getString(wordAddr, wordLen)
+
+    push!(sources, open(word, "r"))
+
+    # Clear input buffer
+    mem[NUMTIB] = 0
+
+    return NEXT
+end)
 
 
 #### VM loop ####
