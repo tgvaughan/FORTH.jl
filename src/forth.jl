@@ -994,7 +994,14 @@ INCLUDE_CFA = defPrimWord("INCLUDE", () -> begin
     wordLen = mem[wordAddr-1]
     word = getString(wordAddr, wordLen)
 
-    push!(sources, open(word, "r"))
+    fname = word
+    if !isfile(fname)
+        fname = Pkg.dir("forth","src",word)
+        if !isfile(fname)
+            error("No file named $word found in current directory or package source directory.")
+        end
+    end
+    push!(sources, open(fname, "r"))
 
     # Clear input buffer
     mem[NUMTIB] = 0
@@ -1009,8 +1016,8 @@ initialized = false
 initFileName = nothing
 if isfile("lib.4th")
     initFileName = "lib.4th"
-elseif isfile(Pkg.dir("forth/src/lib.4th"))
-    initFileName = Pkg.dir("forth/src/lib.4th")
+elseif isfile(Pkg.dir("forth","src", "lib.4th"))
+    initFileName = Pkg.dir("forth","src","lib.4th")
 end
 
 function run(;initialize=true)
