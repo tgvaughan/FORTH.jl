@@ -1,9 +1,9 @@
 # forth.jl
 
-A hobby implementation of a FORTH-like system atop the Julia scientific
-computing language.  It will almost certainly never be useful for any purpose
-besides that which it has already fulfilled: forcing me to think quite
-carefully about how forth works. 
+A hobby implementation of a forth system atop the Julia scientific computing
+language.  It will almost certainly never be useful for any purpose besides
+that which it has already fulfilled: forcing me to think quite carefully about
+how forth works. 
 
 This package owes a massive debt to the existence of the literate programming
 project [JonesForth] (https://rwmj.wordpress.com/2010/08/07/jonesforth-git-repository/),
@@ -13,8 +13,8 @@ is in a few places non-trivial due to the fact that julia is a high level
 language.  A huge proportion (say 80%) of the library code in src/lib.4th is
 directly copied from JonesForth.  (The fact that it was possible to reuse this
 code was satisfying in its own right!) I've added some additional core
-definitions and modified some of the others to be a little bit closer to the
-behaviour of ANS forth (or at least FORTH 83).
+definitions and modified some of the others with the eventual aim of F83
+compliance (discussed below).
 
 There's quite a lot to say about the implementation, especially due to its
 high-level grounding, but that will have to wait for another time.
@@ -43,7 +43,7 @@ the library file.  Once this is complete you can start entering forth commands:
 There's an example Mandelbrot Set drawing program included in the examples
 directory.  To run it, you'll have to locate this directory on your system (its
 location depends on what OS you happen to be using and how julia is installed).
-Once found, use the INCLUDE word to compile its definitions. For example, on
+Once found, use the `INCLUDE` word to compile its definitions. For example, on
 my system I can run the example in this way:
 
     include /home/tim/.julia/v0.4/forth/examples/mandelbrot.4th
@@ -80,7 +80,45 @@ my system I can run the example in this way:
                                                                            **                       
     ok
 
-To exit, enter ^D on a blank line or use the `bye` word.
+To exit, enter ^D on a blank line or use the `BYE` word.
+
+## FORTH-83 Compliance
+
+One of my goals has been to have forth.jl contain as much of the
+[F83 required word set](http://forth.sourceforge.net/standard/fst83/fst83-12.htm) 
+as makes sense given the underlying VM. (Actually, my main goal goes a bit
+beyond this: I want to be able to, with a couple of exceptions, be compatible
+with the description of forth contained in the second edition of Leo Brodie's
+book "Starting Forth".)  I'm fairly happy with my progress so far.  Of the
+131 required F83 words, only 26 remain unimplemented.  These words fall into
+three categories: those I intend to implement in the near future, those I may
+possibly implement at some point, and those that I do not intend to ever implement
+for reasons of obsolescence or incompatibility with the design of the VM.
+
+### F83 Words to be implemented soon
+
+    PAD ABORT" CMOVE> VOCABULARY DEFINITIONS FORTH
+
+User-defined vocabularies aren't in there yet but this should be easy to solve.
+`PAD`, `ABORT` and `CMOVE>` are simple oversights.
+
+### F83 Words that may be implemented someday
+
+    # #> #S -TRAILING <#
+
+These words all have to do with number to string conversion, something I've
+not been interested in enough yet to get on top of.
+
+### F83 Words that won't be implemented
+
+    D+ D< DNEGATE U< UM* UM/MOD BLOCK BUFFER FLUSH
+    SAVE-BUFFERS UPDATE BLK HOLD LOAD FORTH-83
+
+These words don't make sense to implement.  The double-length integer words are
+useless, because the smallest unit of memory in our VM is a full 64 bit
+integer.  For the same reason, there's no point in dealing with unsigned values
+just to gain access to another bit.  The block I/O words don't make sense because
+we have access to a filesystem via the OS.
 
 ## License
 
