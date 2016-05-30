@@ -41,12 +41,12 @@ the library file.  Once this is complete you can start entering forth commands:
     star * ok
 
 There's an example Mandelbrot Set drawing program included in the examples
-directory.  To run it, you'll have to locate this directory on your system (its
-location depends on what OS you happen to be using and how julia is installed).
-Once found, use the `INCLUDE` word to compile its definitions. For example, on
-my system I can run the example in this way:
+directory.  To run it, use the `INCLUDE` word to open the file and compile its
+definitions.  Although the exact location of the examples directory in your
+filesystem is platform dependent, `INCLUDE` includes the forth.jl src/ directory
+in its search path so the following should always work:
 
-    include /home/tim/.julia/v0.4/forth/examples/mandelbrot.4th
+    include ../examples/mandelbrot.4th
     Enter 'mandel' to draw the Mandelbrot Set. ok
     mandel
                                                                                 *                   
