@@ -59,9 +59,12 @@
     ['] LIT , ,
 ;
 
+: LATEST
+    CURRENT @ ;
+
 : RECURSE IMMEDIATE
         LATEST @        \ LATEST points to the word being compiled at the moment
-        >CFA            \ get the codeword
+        LFA>CFA         \ get the codeword
         ,               \ compile it
 ;
 

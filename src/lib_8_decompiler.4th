@@ -37,7 +37,7 @@
         DROP            ( at this point, the stack is: start-of-word end-of-word )
         SWAP            ( end-of-word start-of-word )
 
-        DUP >CFA @ CASE
+        DUP LFA>CFA @ CASE
                 DOCOL OF
                         \ Colon definition
                         [CHAR] : EMIT SPACE DUP 1+ .NAME SPACE
@@ -61,7 +61,7 @@
 
         4 SPACES
 
-        >CFA >BODY            ( get the data address, ie. points after DOCOL | end-of-word start-of-data )
+        LFA>CFA >BODY            ( get the data address, ie. points after DOCOL | end-of-word start-of-data )
 
         ( now we start decompiling until we hit the end of the word )
         BEGIN           ( end start )

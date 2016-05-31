@@ -17,13 +17,15 @@ primNames = Array{ASCIIString,1}()
 
 nextVarAddr = 1
 H = nextVarAddr; nextVarAddr += 1       # Next free memory address
-LATEST = nextVarAddr; nextVarAddr += 1  # LFA of latest word in systetm dict
+FORTH = nextVarAddr; nextVarAddr += 1   # LFA of latest word in system dict
+CURRENT = nextVarAddr; nextVarAddr += 1 # Current compilation dict
 
 RSP0 = nextVarAddr                  # bottom of RS
 PSP0 = RSP0 + size_RS               # bottom of PS
 TIB = PSP0 + size_PS                # address of terminal input buffer
 mem[H] = TIB + size_TIB             # location of bottom of dictionary
-mem[LATEST] = 0                     # no previous definition
+mem[FORTH] = 0                      # no previous definition
+mem[CURRENT] = FORTH                # Compile words to system dict initially
 
 DICT = mem[H] # Save bottom of dictionary as constant
 
@@ -108,8 +110,8 @@ F_HIDDEN = 64
 NFA_MARK = 128
 
 function createHeader(name::AbstractString, flags::Int64)
-    mem[mem[H]] = mem[LATEST]
-    mem[LATEST] = mem[H]
+    mem[mem[H]] = mem[mem[CURRENT]]
+    mem[mem[CURRENT]] = mem[H]
     mem[H] += 1
 
     mem[mem[H]] = length(name) | flags | NFA_MARK; mem[H] += 1
@@ -209,7 +211,7 @@ end)
 # Dictionary entries for core built-in variables, constants
 
 H_CFA = defExistingVar("H", H)
-LATEST_CFA = defExistingVar("LATEST", LATEST)
+#LATEST_CFA = defExistingVar("LATEST", LATEST)
 
 PSP0_CFA = defConst("PSP0", PSP0)
 RSP0_CFA = defConst("RSP0", RSP0)
@@ -693,7 +695,7 @@ end)
 
 # Dictionary searches
 
-TOCFA_CFA = defPrimWord(">CFA", () -> begin
+LFATOCFA_CFA = defPrimWord("LFA>CFA", () -> begin
 
     addr = popPS()
     lenAndFlags = mem[addr+1]
@@ -706,6 +708,11 @@ end)
 
 TOBODY_CFA = defWord(">BODY", [INCR_CFA, EXIT_CFA])
 
+FORTH_CFA = defExistingVar("FORTH", FORTH)
+CONTEXT, CONTEXT_CFA = defNewVar("CONTEXT", zeros(Int64, 100))
+mem[CONTEXT] = FORTH_CFA
+NUMCONTEXT, NUMCONTEXT_CFA = defNewVar("#CONTEXT", 1)
+
 FIND_CFA = defPrimWord("FIND", () -> begin
 
     countedAddr = popPS()
@@ -713,30 +720,42 @@ FIND_CFA = defPrimWord("FIND", () -> begin
     wordLen = mem[countedAddr]
     word = lowercase(getString(wordAddr, wordLen))
 
-    latest = LATEST
+    context = mem[CONTEXT:(CONTEXT+mem[NUMCONTEXT])]
+
     lenAndFlags = 0
-    
-    i = 0
-    while (latest = mem[latest]) > 0
-        lenAndFlags = mem[latest+1]
-        len = lenAndFlags & F_LENMASK
-        hidden = (lenAndFlags & F_HIDDEN) == F_HIDDEN
+    lfa = 0
 
-        if hidden || len != wordLen
-            continue
+    for vocabCFA in reverse(context)
+        callPrim(mem[vocabCFA])
+        lfa = popPS()
+
+        while lfa > 0
+            lenAndFlags = mem[lfa+1]
+            len = lenAndFlags & F_LENMASK
+            hidden = (lenAndFlags & F_HIDDEN) == F_HIDDEN
+
+            if hidden || len != wordLen
+                continue
+            end
+
+            thisAddr = latest+2
+            thisWord = lowercase(getString(thisAddr, len))
+
+            if lowercase(thisWord) == lowercase(word)
+                break
+            end
+
+            lfa = mem[lfa]
         end
-        
-        thisAddr = latest+2
-        thisWord = lowercase(getString(thisAddr, len))
 
-        if lowercase(thisWord) == lowercase(word)
+        if lfa>0
             break
         end
     end
 
-    if latest > 0
-        pushPS(latest)
-        callPrim(mem[TOCFA_CFA])
+    if lfa > 0
+        pushPS(lfa)
+        callPrim(mem[LFATOCFA_CFA])
         if (lenAndFlags & F_IMMED) == F_IMMED
             pushPS(1)
         else
@@ -870,8 +889,8 @@ end, name="DODOES")
 
 DOES_HELPER_CFA = defPrimWord("(DOES>)", () -> begin
 
-    pushPS(mem[LATEST])
-    callPrim(mem[TOCFA_CFA])
+    pushPS(mem[mem[CURRENT]])
+    callPrim(mem[LFATOCFA_CFA])
     cfa = popPS()
 
     runtimeAddr = popPS()
@@ -900,7 +919,7 @@ RBRAC_CFA = defPrimWord("]", () -> begin
 end, flags=F_IMMED)
 
 HIDDEN_CFA = defPrimWord("HIDDEN", () -> begin
-    lenAndFlagsAddr = mem[LATEST] + 1
+    lenAndFlagsAddr = mem[mem[CURRENT]] + 1
     mem[lenAndFlagsAddr] = mem[lenAndFlagsAddr] $ F_HIDDEN
     return NEXT
 end)
@@ -920,7 +939,7 @@ SEMICOLON_CFA = defWord(";",
     EXIT_CFA], flags=F_IMMED)
 
 IMMEDIATE_CFA = defPrimWord("IMMEDIATE", () -> begin
-    lenAndFlagsAddr = mem[LATEST] + 1
+    lenAndFlagsAddr = mem[mem[CURRENT]] + 1
     mem[lenAndFlagsAddr] = mem[lenAndFlagsAddr] $ F_IMMED
     return NEXT
 end, flags=F_IMMED)
