@@ -16,13 +16,13 @@ primNames = Array{ASCIIString,1}()
 # Built-in variables
 
 nextVarAddr = 1
-H = nextVarAddr; nextVarAddr += 1
-LATEST = nextVarAddr; nextVarAddr += 1
+H = nextVarAddr; nextVarAddr += 1       # Next free memory address
+LATEST = nextVarAddr; nextVarAddr += 1  # LFA of latest word in systetm dict
 
 RSP0 = nextVarAddr                  # bottom of RS
 PSP0 = RSP0 + size_RS               # bottom of PS
 TIB = PSP0 + size_PS                # address of terminal input buffer
-mem[H] = TIB + size_TIB          # location of bottom of dictionary
+mem[H] = TIB + size_TIB             # location of bottom of dictionary
 mem[LATEST] = 0                     # no previous definition
 
 DICT = mem[H] # Save bottom of dictionary as constant
@@ -151,17 +151,20 @@ function defExistingVar(name::AbstractString, varAddr::Int64; flags::Int64=0)
     end)))
 end
 
-function defNewVar(name::AbstractString, initial::Int64; flags::Int64=0)
+function defNewVar(name::AbstractString, initial::Array{Int64,1}; flags::Int64=0)
     createHeader(name, flags)
     
     codeWordAddr = mem[H]
     varAddr = mem[H] + 1
 
     mem[mem[H]] = DOVAR; mem[H] += 1
-    mem[mem[H]] = initial; mem[H] += 1
+    mem[mem[H]:(mem[H]+length(initial)-1)] = initial; mem[H] += length(initial)
 
     return varAddr, codeWordAddr
 end
+
+defNewVar(name::AbstractString, initial::Int64; flags::Int64=0) =
+    defNewVar(name, [initial]; flags=flags)
 
 function defConst(name::AbstractString, val::Int64; flags::Int64=0)
     createHeader(name, flags)

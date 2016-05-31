@@ -2,6 +2,9 @@
         #TIB @ >IN !
 ; \ We can now comment!
 
+\ Compile core definitions
+\ (These files must be compiled in order!)
+
 include lib_1_basic.4th
 include lib_2_control.4th
 include lib_3_comments.4th
