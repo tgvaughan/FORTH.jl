@@ -16,16 +16,16 @@ primNames = Array{ASCIIString,1}()
 # Built-in variables
 
 nextVarAddr = 1
-H = nextVarAddr; nextVarAddr += 1       # Next free memory address
-FORTH = nextVarAddr; nextVarAddr += 1   # LFA of latest word in system dict
-CURRENT = nextVarAddr; nextVarAddr += 1 # Current compilation dict
+H = nextVarAddr; nextVarAddr += 1              # Next free memory address
+FORTH_LATEST = nextVarAddr; nextVarAddr += 1   # LFA of latest word in system dict
+CURRENT = nextVarAddr; nextVarAddr += 1        # Current compilation dict
 
 RSP0 = nextVarAddr                  # bottom of RS
 PSP0 = RSP0 + size_RS               # bottom of PS
 TIB = PSP0 + size_PS                # address of terminal input buffer
 mem[H] = TIB + size_TIB             # location of bottom of dictionary
-mem[FORTH] = 0                      # no previous definition
-mem[CURRENT] = FORTH                # Compile words to system dict initially
+mem[FORTH_LATEST] = 0               # no previous definition
+mem[CURRENT] = FORTH_LATEST         # Compile words to system dict initially
 
 DICT = mem[H] # Save bottom of dictionary as constant
 
@@ -213,7 +213,6 @@ end)
 # Dictionary entries for core built-in variables, constants
 
 H_CFA = defExistingVar("H", H)
-FORTH_CFA = defExistingVar("FORTH", FORTH)
 CURRENT_CFA = defExistingVar("CURRENT", CURRENT)
 
 PSP0_CFA = defConst("PSP0", PSP0)
@@ -709,6 +708,14 @@ FROMLINK_CFA = defPrimWord("LINK>", () -> begin
     return NEXT
 end)
 
+createHeader("FORTH", 0)
+FORTH_CFA = mem[H]
+dictWrite(defPrim(() -> begin
+    mem[CONTEXT] = reg.W
+    return NEXT
+end, name="FORTH"))
+dictWrite(FORTH_LATEST)
+
 CONTEXT, CONTEXT_CFA = defNewVar("CONTEXT", zeros(Int64, 100))
 mem[CONTEXT] = FORTH_CFA
 NUMCONTEXT, NUMCONTEXT_CFA = defNewVar("#CONTEXT", 1)
@@ -726,8 +733,7 @@ FIND_CFA = defPrimWord("FIND", () -> begin
     lfa = 0
 
     for vocabCFA in reverse(context)
-        callPrim(mem[vocabCFA])
-        lfa = popPS()
+        lfa = mem[vocabCFA+1]
 
         while (lfa = mem[lfa]) > 0
 
