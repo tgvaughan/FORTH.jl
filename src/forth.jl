@@ -211,7 +211,8 @@ end)
 # Dictionary entries for core built-in variables, constants
 
 H_CFA = defExistingVar("H", H)
-#LATEST_CFA = defExistingVar("LATEST", LATEST)
+FORTH_CFA = defExistingVar("FORTH", FORTH)
+CURRENT_CFA = defExistingVar("CURRENT", CURRENT)
 
 PSP0_CFA = defConst("PSP0", PSP0)
 RSP0_CFA = defConst("RSP0", RSP0)
@@ -708,7 +709,6 @@ end)
 
 TOBODY_CFA = defWord(">BODY", [INCR_CFA, EXIT_CFA])
 
-FORTH_CFA = defExistingVar("FORTH", FORTH)
 CONTEXT, CONTEXT_CFA = defNewVar("CONTEXT", zeros(Int64, 100))
 mem[CONTEXT] = FORTH_CFA
 NUMCONTEXT, NUMCONTEXT_CFA = defNewVar("#CONTEXT", 1)
@@ -720,7 +720,7 @@ FIND_CFA = defPrimWord("FIND", () -> begin
     wordLen = mem[countedAddr]
     word = lowercase(getString(wordAddr, wordLen))
 
-    context = mem[CONTEXT:(CONTEXT+mem[NUMCONTEXT])]
+    context = mem[CONTEXT:(CONTEXT+mem[NUMCONTEXT]-1)]
 
     lenAndFlags = 0
     lfa = 0
@@ -729,7 +729,8 @@ FIND_CFA = defPrimWord("FIND", () -> begin
         callPrim(mem[vocabCFA])
         lfa = popPS()
 
-        while lfa > 0
+        while (lfa = mem[lfa]) > 0
+
             lenAndFlags = mem[lfa+1]
             len = lenAndFlags & F_LENMASK
             hidden = (lenAndFlags & F_HIDDEN) == F_HIDDEN
@@ -738,14 +739,11 @@ FIND_CFA = defPrimWord("FIND", () -> begin
                 continue
             end
 
-            thisAddr = latest+2
-            thisWord = lowercase(getString(thisAddr, len))
+            thisWord = lowercase(getString(lfa+2, len))
 
-            if lowercase(thisWord) == lowercase(word)
+            if thisWord == word
                 break
             end
-
-            lfa = mem[lfa]
         end
 
         if lfa>0
