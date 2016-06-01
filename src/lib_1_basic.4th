@@ -66,7 +66,7 @@
 
 \ LFA of most recent definition
 : LATEST
-    CURRENT @ ;
+    CURRENT @ 1+ ;
 
 \ Compile in recursive call to current word
 : RECURSE IMMEDIATE

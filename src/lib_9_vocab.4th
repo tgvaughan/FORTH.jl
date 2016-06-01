@@ -10,3 +10,19 @@
         BL WORD FIND DROP >NAME
         DUP @ F_HIDDEN OR SWAP !
 ;
+
+: VOCAB>LATEST ( vcfa -- vlatest )
+        1+ @ @ ;
+
+: ORDER
+
+    \ Search order
+    context #context @ 1- + context
+    do
+        i @ >name .name
+    loop
+
+    \ Current (definitions)
+    9 emit
+    current @ >name .name
+;

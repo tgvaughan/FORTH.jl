@@ -17,15 +17,15 @@ primNames = Array{ASCIIString,1}()
 
 nextVarAddr = 1
 H = nextVarAddr; nextVarAddr += 1              # Next free memory address
-FORTH_LATEST = nextVarAddr; nextVarAddr += 1   # LFA of latest word in system dict
+FORTH_LATEST = nextVarAddr; nextVarAddr += 1   # FORTH dict latest
 CURRENT = nextVarAddr; nextVarAddr += 1        # Current compilation dict
 
 RSP0 = nextVarAddr                  # bottom of RS
 PSP0 = RSP0 + size_RS               # bottom of PS
 TIB = PSP0 + size_PS                # address of terminal input buffer
 mem[H] = TIB + size_TIB             # location of bottom of dictionary
-mem[FORTH_LATEST] = 0               # no previous definition
-mem[CURRENT] = FORTH_LATEST         # Compile words to system dict initially
+mem[FORTH_LATEST] = 0               # zero FORTH dict latest (no previous def)
+mem[CURRENT] = FORTH_LATEST-1       # Compile words to system dict initially
 
 DICT = mem[H] # Save bottom of dictionary as constant
 
@@ -117,8 +117,8 @@ dictWrite(int::Int64) = dictWrite([int])
 dictWriteString(string::ASCIIString) = dictWrite([Int64(c) for c in string])
 
 function createHeader(name::AbstractString, flags::Int64)
-    mem[mem[H]] = mem[mem[CURRENT]]
-    mem[mem[CURRENT]] = mem[H]
+    mem[mem[H]] = mem[mem[CURRENT]+1]
+    mem[mem[CURRENT]+1] = mem[H]
     mem[H] += 1
 
     dictWrite(length(name) | flags | NFA_MARK)
@@ -213,7 +213,6 @@ end)
 # Dictionary entries for core built-in variables, constants
 
 H_CFA = defExistingVar("H", H)
-CURRENT_CFA = defExistingVar("CURRENT", CURRENT)
 
 PSP0_CFA = defConst("PSP0", PSP0)
 RSP0_CFA = defConst("RSP0", RSP0)
@@ -714,9 +713,15 @@ dictWrite(defPrim(() -> begin
     mem[CONTEXT] = reg.W
     return NEXT
 end, name="FORTH"))
-dictWrite(FORTH_LATEST)
+dictWrite(0) # cell for latest
 
-CONTEXT, CONTEXT_CFA = defNewVar("CONTEXT", zeros(Int64, 100))
+CURRENT_CFA = defExistingVar("CURRENT", CURRENT)
+
+# Switch to new FORTH vocabulary cfa
+mem[FORTH_CFA+1] = mem[mem[CURRENT]+1]
+mem[CURRENT] = FORTH_CFA
+
+CONTEXT, CONTEXT_CFA = defNewVar("CONTEXT", zeros(Int64, 10))
 mem[CONTEXT] = FORTH_CFA
 NUMCONTEXT, NUMCONTEXT_CFA = defNewVar("#CONTEXT", 1)
 
@@ -733,7 +738,7 @@ FIND_CFA = defPrimWord("FIND", () -> begin
     lfa = 0
 
     for vocabCFA in reverse(context)
-        lfa = mem[vocabCFA+1]
+        lfa = vocabCFA+1
 
         while (lfa = mem[lfa]) > 0
 
@@ -893,7 +898,7 @@ end, name="DODOES")
 
 DOES_HELPER_CFA = defPrimWord("(DOES>)", () -> begin
 
-    pushPS(mem[mem[CURRENT]])
+    pushPS(mem[mem[CURRENT]+1])
     callPrim(mem[FROMLINK_CFA])
     cfa = popPS()
 
@@ -923,7 +928,7 @@ RBRAC_CFA = defPrimWord("]", () -> begin
 end, flags=F_IMMED)
 
 HIDDEN_CFA = defPrimWord("HIDDEN", () -> begin
-    lenAndFlagsAddr = mem[mem[CURRENT]] + 1
+    lenAndFlagsAddr = mem[mem[CURRENT]+1] + 1
     mem[lenAndFlagsAddr] = mem[lenAndFlagsAddr] $ F_HIDDEN
     return NEXT
 end)
@@ -943,7 +948,7 @@ SEMICOLON_CFA = defWord(";",
     EXIT_CFA], flags=F_IMMED)
 
 IMMEDIATE_CFA = defPrimWord("IMMEDIATE", () -> begin
-    lenAndFlagsAddr = mem[mem[CURRENT]] + 1
+    lenAndFlagsAddr = mem[mem[CURRENT]+1] + 1
     mem[lenAndFlagsAddr] = mem[lenAndFlagsAddr] $ F_IMMED
     return NEXT
 end, flags=F_IMMED)
