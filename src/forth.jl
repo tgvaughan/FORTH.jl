@@ -109,21 +109,27 @@ F_IMMED = 32
 F_HIDDEN = 64
 NFA_MARK = 128
 
+function dictWrite(ints::Array{Int64,1})
+    mem[mem[H]:(mem[H]+length(ints)-1)] = ints
+    mem[H] += length(ints)
+end
+dictWrite(int::Int64) = dictWrite([int])
+dictWriteString(string::ASCIIString) = dictWrite([Int64(c) for c in string])
+
 function createHeader(name::AbstractString, flags::Int64)
     mem[mem[H]] = mem[mem[CURRENT]]
     mem[mem[CURRENT]] = mem[H]
     mem[H] += 1
 
-    mem[mem[H]] = length(name) | flags | NFA_MARK; mem[H] += 1
-    putString(name, mem[H]); mem[H] += length(name)
+    dictWrite(length(name) | flags | NFA_MARK)
+    dictWriteString(name)
 end
 
 function defPrimWord(name::AbstractString, f::Function; flags::Int64=0)
     createHeader(name, flags)
 
     codeWordAddr = mem[H]
-    mem[codeWordAddr] = defPrim(f, name=name)
-    mem[H] += 1
+    dictWrite(defPrim(f, name=name))
 
     return codeWordAddr
 end
@@ -132,13 +138,9 @@ function defWord(name::AbstractString, wordAddrs::Array{Int64,1}; flags::Int64=0
     createHeader(name, flags)
 
     addr = mem[H]
-    mem[mem[H]] = DOCOL
-    mem[H] += 1
+    dictWrite(DOCOL)
 
-    for wordAddr in wordAddrs
-        mem[mem[H]] = wordAddr
-        mem[H] += 1
-    end
+    dictWrite(wordAddrs)
 
     return addr
 end
@@ -159,8 +161,8 @@ function defNewVar(name::AbstractString, initial::Array{Int64,1}; flags::Int64=0
     codeWordAddr = mem[H]
     varAddr = mem[H] + 1
 
-    mem[mem[H]] = DOVAR; mem[H] += 1
-    mem[mem[H]:(mem[H]+length(initial)-1)] = initial; mem[H] += length(initial)
+    dictWrite(DOVAR)
+    dictWrite(initial)
 
     return varAddr, codeWordAddr
 end
@@ -173,8 +175,8 @@ function defConst(name::AbstractString, val::Int64; flags::Int64=0)
 
     codeWordAddr = mem[H]
 
-    mem[mem[H]] = DOCON; mem[H] += 1
-    mem[mem[H]] = val; mem[H] += 1
+    dictWrite(DOCON)
+    dictWrite(val)
 
     return codeWordAddr
 end
