@@ -899,7 +899,7 @@ DOES_HELPER_CFA = defPrimWord("(DOES>)", () -> begin
     end)), name="doesPrim")
 
     return NEXT
-end, flags=F_IMMED)
+end, flags=F_IMMED | F_HIDDEN)
 
 DOES_CFA = defWord("DOES>",
     [LIT_CFA, LIT_CFA, COMMA_CFA, HERE_CFA, LIT_CFA, 3, ADD_CFA, COMMA_CFA,

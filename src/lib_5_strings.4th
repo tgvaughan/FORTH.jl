@@ -3,6 +3,7 @@
 : CMOVE ( src dest length -- )
 
         DUP 0<= IF
+                DROP DROP DROP
                 EXIT
         THEN
 
@@ -14,6 +15,24 @@
                 OVER I +    ( (dest-src) i@ (dest-src+i) )
                 !           ( (dest-src) )
         LOOP
+
+        DROP
+;
+
+: CMOVE> ( src dest length -- )
+        DUP 0<= IF
+                DROP DROP DROP
+                EXIT
+        THEN
+
+        -ROT OVER -         ( length src (dest-src) )
+        -ROT DUP ROT + 1-   ( (dest-src) src (src+length-1) )
+        
+        DO
+                I @
+                OVER I +
+                !
+        -1 +LOOP
 
         DROP
 ;
