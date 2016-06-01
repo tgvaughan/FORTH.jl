@@ -14,15 +14,45 @@
 : VOCAB>LATEST ( vcfa -- vlatest )
         1+ @ @ ;
 
+: ALSO
+        context #context @ + dup 1- @ swap !
+        1 #context +!
+;
+
+\ Create new vocabulary
+: VOCABULARY
+        create 0 ,
+does>
+        body> context #context @ 1- + !
+;
+
+: DEFINITIONS
+        context @ current !
+;
+
+vocabulary root
+also root definitions
+
+: FORTH forth ;
+
+: ONLY
+        1 #context !
+        root 
+        2 #context !
+;
+
+\ only forth
+
+\ Display search order and compilation dictionary
 : ORDER
 
-    \ Search order
-    context #context @ 1- + context
-    do
-        i @ >name .name
-    loop
+        \ Search order
+        context #context @ 1- + context swap
+        do
+            i @ >name .name space
+        -1 +loop
 
-    \ Current (definitions)
-    9 emit
-    current @ >name .name
+        \ Current (definitions)
+        9 emit
+        current @ >name .name
 ;
