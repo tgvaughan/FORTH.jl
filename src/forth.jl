@@ -698,7 +698,7 @@ end)
 
 # Dictionary searches
 
-LFATOCFA_CFA = defPrimWord("LFA>CFA", () -> begin
+FROMLINK_CFA = defPrimWord("LINK>", () -> begin
 
     addr = popPS()
     lenAndFlags = mem[addr+1]
@@ -708,8 +708,6 @@ LFATOCFA_CFA = defPrimWord("LFA>CFA", () -> begin
 
     return NEXT
 end)
-
-TOBODY_CFA = defWord(">BODY", [INCR_CFA, EXIT_CFA])
 
 CONTEXT, CONTEXT_CFA = defNewVar("CONTEXT", zeros(Int64, 100))
 mem[CONTEXT] = FORTH_CFA
@@ -755,7 +753,7 @@ FIND_CFA = defPrimWord("FIND", () -> begin
 
     if lfa > 0
         pushPS(lfa)
-        callPrim(mem[LFATOCFA_CFA])
+        callPrim(mem[FROMLINK_CFA])
         if (lenAndFlags & F_IMMED) == F_IMMED
             pushPS(1)
         else
@@ -890,7 +888,7 @@ end, name="DODOES")
 DOES_HELPER_CFA = defPrimWord("(DOES>)", () -> begin
 
     pushPS(mem[mem[CURRENT]])
-    callPrim(mem[LFATOCFA_CFA])
+    callPrim(mem[FROMLINK_CFA])
     cfa = popPS()
 
     runtimeAddr = popPS()

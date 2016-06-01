@@ -36,16 +36,21 @@
 : C@ @ ;
 : C, , ;
 
+\ Retrieve stack depth
 : DEPTH PSP@ PSP0 - ;
 
+\ Words for whitespace
 : '\n' 10 ;
 : BL 32 ;
 : CR '\n' emit ;
 : SPACE BL emit ;
 
+\ CFA retrieval
 : ' BL WORD FIND DROP ;
 : ['] IMMEDIATE
      LIT LIT , ' , ;
+
+\ Compilation
 
 : [COMPILE] IMMEDIATE ' , ;
 : COMPILE IMMEDIATE
@@ -59,12 +64,14 @@
     ['] LIT , ,
 ;
 
+\ LFA of most recent definition
 : LATEST
     CURRENT @ ;
 
+\ Compile in recursive call to current word
 : RECURSE IMMEDIATE
         LATEST @        \ LATEST points to the word being compiled at the moment
-        LFA>CFA         \ get the codeword
+        LINK>           \ get the codeword
         ,               \ compile it
 ;
 

@@ -1,3 +1,20 @@
+\ Remaining field address conversion words
+
+: >NAME
+        BEGIN
+                1- DUP @
+                NFA_MARK AND
+        NFA_MARK = UNTIL
+;
+
+: NAME> 1- LINK> ;
+
+: >LINK  >NAME 1- ;
+
+: >BODY 1+ ;
+
+: BODY> 1- ;
+
 \ Constants and Variables
 
 : CONSTANT

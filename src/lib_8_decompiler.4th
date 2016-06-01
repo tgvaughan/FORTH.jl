@@ -1,14 +1,5 @@
 \ Decompilation
 
-: >NAME
-        BEGIN
-                1- DUP @
-                NFA_MARK AND
-        NFA_MARK = UNTIL
-;
-
-: >LFA  >NAME 1- ;
-
 : SEE
         BL WORD FIND    ( find the dictionary entry to decompile )
 
@@ -19,7 +10,7 @@
                 EXIT
         THEN
 
-        >LFA
+        >LINK
 
         ( Now we search again, looking for the next word in the dictionary.  This gives us
           the length of the word that we will be decompiling.  (Well, mostly it does). )
@@ -37,7 +28,7 @@
         DROP            ( at this point, the stack is: start-of-word end-of-word )
         SWAP            ( end-of-word start-of-word )
 
-        DUP LFA>CFA @ CASE
+        DUP LINK> @ CASE
                 DOCOL OF
                         \ Colon definition
                         [CHAR] : EMIT SPACE DUP 1+ .NAME SPACE
@@ -61,7 +52,7 @@
 
         4 SPACES
 
-        LFA>CFA >BODY            ( get the data address, ie. points after DOCOL | end-of-word start-of-data )
+        LINK> >BODY            ( get the data address, ie. points after DOCOL | end-of-word start-of-data )
 
         ( now we start decompiling until we hit the end of the word )
         BEGIN           ( end start )
