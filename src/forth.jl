@@ -726,39 +726,30 @@ mem[CURRENT] = FORTH_CFA
 CONTEXT, CONTEXT_CFA = defNewVar("CONTEXT", zeros(Int64, 10))
 mem[CONTEXT] = FORTH_CFA
 
-FIND_CFA = defPrimWord("FIND", () -> begin
-
+FINDVOCAB_CFA = defPrimWord("FINDVOCAB", () -> begin
+    vocabCFA = popPS()
     countedAddr = popPS()
+
     wordAddr = countedAddr + 1
     wordLen = mem[countedAddr]
     word = lowercase(getString(wordAddr, wordLen))
 
-    context = mem[CONTEXT:(CONTEXT+mem[NUMCONTEXT]-1)]
-
+    lfa = vocabCFA+1
     lenAndFlags = 0
-    lfa = 0
 
-    for vocabCFA in reverse(context)
-        lfa = vocabCFA+1
+    while (lfa = mem[lfa]) > 0
 
-        while (lfa = mem[lfa]) > 0
+        lenAndFlags = mem[lfa+1]
+        len = lenAndFlags & F_LENMASK
+        hidden = (lenAndFlags & F_HIDDEN) == F_HIDDEN
 
-            lenAndFlags = mem[lfa+1]
-            len = lenAndFlags & F_LENMASK
-            hidden = (lenAndFlags & F_HIDDEN) == F_HIDDEN
-
-            if hidden || len != wordLen
-                continue
-            end
-
-            thisWord = lowercase(getString(lfa+2, len))
-
-            if thisWord == word
-                break
-            end
+        if hidden || len != wordLen
+            continue
         end
 
-        if lfa>0
+        thisWord = lowercase(getString(lfa+2, len))
+
+        if thisWord == word
             break
         end
     end
@@ -775,6 +766,31 @@ FIND_CFA = defPrimWord("FIND", () -> begin
         pushPS(countedAddr)
         pushPS(0)
     end
+
+    return NEXT
+end)
+
+FIND_CFA = defPrimWord("FIND", () -> begin
+
+    countedAddr = popPS()
+    context = mem[CONTEXT:(CONTEXT+mem[NUMCONTEXT]-1)]
+
+    for vocabCFA in reverse(context)
+        pushPS(countedAddr)
+        pushPS(vocabCFA)
+        callPrim(mem[FINDVOCAB_CFA])
+
+        callPrim(mem[DUP_CFA])
+        if popPS() != 0
+            return NEXT
+        else
+            popPS()
+            popPS()
+        end
+    end
+
+    pushPS(countedAddr)
+    pushPS(0)
 
     return NEXT
 end)
