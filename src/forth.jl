@@ -707,10 +707,12 @@ FROMLINK_CFA = defPrimWord("LINK>", () -> begin
     return NEXT
 end)
 
+NUMCONTEXT, NUMCONTEXT_CFA = defNewVar("#CONTEXT", 1)
+
 createHeader("FORTH", 0)
 FORTH_CFA = mem[H]
 dictWrite(defPrim(() -> begin
-    mem[CONTEXT] = reg.W
+    mem[CONTEXT + mem[NUMCONTEXT] - 1] = reg.W
     return NEXT
 end, name="FORTH"))
 dictWrite(0) # cell for latest
@@ -723,7 +725,6 @@ mem[CURRENT] = FORTH_CFA
 
 CONTEXT, CONTEXT_CFA = defNewVar("CONTEXT", zeros(Int64, 10))
 mem[CONTEXT] = FORTH_CFA
-NUMCONTEXT, NUMCONTEXT_CFA = defNewVar("#CONTEXT", 1)
 
 FIND_CFA = defPrimWord("FIND", () -> begin
 

@@ -27,21 +27,8 @@ does>
 ;
 
 : DEFINITIONS
-        context @ current !
+        context #context @ 1- + @ current !
 ;
-
-vocabulary root
-also root definitions
-
-: FORTH forth ;
-
-: ONLY
-        1 #context !
-        root 
-        2 #context !
-;
-
-\ only forth
 
 \ Display search order and compilation dictionary
 : ORDER
@@ -53,6 +40,29 @@ also root definitions
         -1 +loop
 
         \ Current (definitions)
-        9 emit
+        5 spaces
         current @ >name .name
 ;
+
+\ Define root vocabulary (always available)
+vocabulary ROOT
+
+: ONLY
+        1 #context !
+        root 
+        2 #context !
+        root 
+;
+
+: PREVIOUS
+        1 #context -!
+;
+
+also root definitions
+
+: FORTH forth ;
+: ALSO  also ;
+: WORDS words ;
+: ORDER order ;
+
+only forth also definitions
