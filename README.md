@@ -90,17 +90,16 @@ as makes sense given the underlying VM. (Actually, my main goal goes a bit
 beyond this: I want to be able to, with a couple of exceptions, be compatible
 with the description of forth contained in the second edition of Leo Brodie's
 book "Starting Forth".)  I'm fairly happy with my progress so far.  Of the
-131 required F83 words, only 26 remain unimplemented.  These words fall into
+131 required F83 words, only 22 remain unimplemented.  These words fall into
 three categories: those I intend to implement in the near future, those I may
 possibly implement at some point, and those that I do not intend to ever implement
 for reasons of obsolescence or incompatibility with the design of the VM.
 
 ### F83 Words to be implemented soon
 
-    PAD ABORT" CMOVE> VOCABULARY DEFINITIONS FORTH
+    PAD ABORT"
 
-User-defined vocabularies aren't in there yet but this should be easy to solve.
-`PAD`, `ABORT` and `CMOVE>` are simple oversights.
+The words `PAD` is a simple oversite. `ABORT"` will also be implemented soon.
 
 ### F83 Words that may be implemented someday
 

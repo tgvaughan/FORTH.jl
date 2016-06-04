@@ -33,6 +33,10 @@
         F_IMMED AND     ( mask the F_IMMED flag and return it (as a truth value) )
 ;
 
+: BODYLEN
+        \ **TODO**
+;
+
 : SEE
         BL WORD FIND    ( find the dictionary entry to decompile )
 
@@ -43,23 +47,7 @@
                 EXIT
         THEN
 
-        >LINK
-
-        ( Now we search again, looking for the next word in the dictionary.  This gives us
-          the length of the word that we will be decompiling.  (Well, mostly it does). )
-        HERE          ( address of the end of the last compiled word )
-        LATEST @        ( word last curr )
-        BEGIN
-                2 PICK          ( word last curr word )
-                OVER            ( word last curr word curr )
-                <>              ( word last curr word<>curr? )
-        WHILE                   ( word last curr )
-                NIP             ( word curr )
-                DUP @           ( word curr prev (which becomes: word last curr) )
-        REPEAT
-
-        DROP            ( at this point, the stack is: start-of-word end-of-word )
-        SWAP            ( end-of-word start-of-word )
+        DUP DUP BODYLEN + SWAP >LINK
 
         DUP LINK> @ CASE
                 DOCOL OF

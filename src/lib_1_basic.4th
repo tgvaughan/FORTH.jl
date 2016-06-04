@@ -64,7 +64,7 @@
     ['] LIT , ,
 ;
 
-\ LFA of most recent definition
+\ Address containing LFA of most recent definition
 : LATEST
     CURRENT @ 1+ ;
 
