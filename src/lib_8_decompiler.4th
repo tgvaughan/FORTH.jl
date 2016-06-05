@@ -1,40 +1,60 @@
 \ Decompilation
 
-: .NAME
-        DUP @           ( get the flags/length byte )
-        F_LENMASK AND   ( mask out the flags - just want the length )
-
-        BEGIN
-                DUP 0>          ( length > 0? )
-        WHILE
-                SWAP 1+         ( addr len -- len addr+1 )
-                DUP @           ( len addr -- len addr char | get the next character)
-                DUP 32 >= OVER 127 <= AND IF
-                        EMIT    ( len addr char -- len addr | and print it)
-                ELSE
-                        BASE @ SWAP HEX
-                        ." \x" 0 .R
-                        BASE !
-                THEN
-                SWAP 1-         ( len addr -- addr len-1    | subtract one from length )
-        REPEAT
-        2DROP           ( len addr -- )
+: VCFA>LATEST
+        1+ @
 ;
 
-: ?HIDDEN
-        1+              ( skip over the link pointer )
-        @               ( get the flags/length byte )
-        F_HIDDEN AND    ( mask the F_HIDDEN flag and return it (as a truth value) )
+: CLOSESTLINK ( addr vcfa -- lfa )
+
+        vcfa>latest dup         ( addr link link )
+        rot dup -rot            ( link addr link addr )
+        < if
+                2drop
+                0 exit
+        then
+
+        swap    ( addr link )
+        0 -rot  ( 0 addr link )
+        
+        begin
+                rot drop        ( addr link )
+                dup -rot @      ( link addr nextlink )
+                2dup            ( link addr nextlink addr nextlink)
+        > until
+
+        2drop
+;
+
+: MIN           ( n m -- max )
+        2dup - 0> if
+                swap drop
+        else
+                drop
+        then
+;
+
+: BODYLEN ( cfa -- len )
+
+        here swap ( clink addr )
+        context dup #context @ + swap
+        do
+                dup i @
+
+                closestlink ( clink addr clink' )
+
+                ?dup 0> if
+                        rot min
+                        swap
+                then
+        loop
+
+        -
 ;
 
 : ?IMMEDIATE
         1+              ( skip over the link pointer )
         @               ( get the flags/length byte )
         F_IMMED AND     ( mask the F_IMMED flag and return it (as a truth value) )
-;
-
-: BODYLEN
-        \ **TODO**
 ;
 
 : SEE

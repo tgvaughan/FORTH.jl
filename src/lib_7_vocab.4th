@@ -13,10 +13,40 @@
         DUP @ LATEST !      ( set LATEST to point to the previous word )
 ;
 
-: HIDE
+\ Mark word as hidden
+: HIDE ( -- )
         BL WORD FIND DROP >NAME
         DUP @ F_HIDDEN OR SWAP !
 ;
+
+: ?HIDDEN
+        1+              ( skip over the link pointer )
+        @               ( get the flags/length byte )
+        F_HIDDEN AND    ( mask the F_HIDDEN flag and return it (as a truth value) )
+;
+
+\ Display name of word
+: .NAME ( cfa -- )
+        DUP @           ( get the flags/length byte )
+        F_LENMASK AND   ( mask out the flags - just want the length )
+
+        BEGIN
+                DUP 0>          ( length > 0? )
+        WHILE
+                SWAP 1+         ( addr len -- len addr+1 )
+                DUP @           ( len addr -- len addr char | get the next character)
+                DUP 32 >= OVER 127 <= AND IF
+                        EMIT    ( len addr char -- len addr | and print it)
+                ELSE
+                        BASE @ SWAP HEX
+                        ." \x" 0 .R
+                        BASE !
+                THEN
+                SWAP 1-         ( len addr -- addr len-1    | subtract one from length )
+        REPEAT
+        2DROP           ( len addr -- )
+;
+
 
 \ Create new vocabulary
 : VOCABULARY
@@ -40,7 +70,11 @@ vocabulary ROOT
 ;
 
 : PREVIOUS
-        1 #context -!
+        #context @ 1 > if
+                1 #context -!
+        else
+                CR ." Cannot empty search order stack!"
+        then
 ;
 
 : ALSO

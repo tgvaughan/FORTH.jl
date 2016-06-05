@@ -1,9 +1,16 @@
 \ Flow control
 
+\ ... if/unless ... [else ...] then
+
 : IF IMMEDIATE
         ['] 0BRANCH ,     \ compile 0BRANCH
         HERE          \ save location of the offset on the stack
         0 ,             \ compile a dummy offset
+;
+
+: UNLESS IMMEDIATE
+        ['] NOT ,         \ compile NOT (to reverse the test)
+        [COMPILE] IF    \ continue by calling the normal IF
 ;
 
 : THEN IMMEDIATE
@@ -21,6 +28,9 @@
         HERE SWAP -
         SWAP !
 ;
+
+
+\ begin ... while ... repeat, begin ... until, begin ... repeat
 
 : BEGIN IMMEDIATE
         HERE          \ save location on the stack
@@ -53,10 +63,8 @@
         SWAP !          \ and back-fill it in the original location
 ;
 
-: UNLESS IMMEDIATE
-        ['] NOT ,         \ compile NOT (to reverse the test)
-        [COMPILE] IF    \ continue by calling the normal IF
-;
+
+\ [?]do ... [+]loop 
 
 : DO IMMEDIATE
         ['] LIT , -1 , [COMPILE] IF
@@ -75,6 +83,8 @@
 : I RSP@ 3 - @ ;
 
 : J RSP@ 6 - @ ;
+
+: K RSP@ 9 - @ ;
 
 : ?LEAVE IMMEDIATE
         ['] 0BRANCH , 13 ,
@@ -123,7 +133,7 @@
 ;
 
 
-\ CASE ------------------------------------------------------------------------
+\ case [of ... endof]+ ... endcase
 
 : CASE IMMEDIATE
         0               \ push 0 to mark the bottom of the stack

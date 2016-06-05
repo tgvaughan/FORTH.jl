@@ -1,4 +1,4 @@
-\ Miscellaneous core words
+\ Miscellaneous undefined core words
 
 : ROLL ( x_u x_u-1... x_0 u -- x_u-1 ... x_0 x_u )
         1+ DUP PICK SWAP    ( x_u x_u-1 ... x_0 x_u u+1 )
@@ -18,14 +18,6 @@
 
 : MAX           ( n m -- max )
         2dup - 0< if
-                swap drop
-        else
-                drop
-        then
-;
-
-: MIN           ( n m -- max )
-        2dup - 0> if
                 swap drop
         else
                 drop
