@@ -1,12 +1,9 @@
 \ Decompilation
 
-: VCFA>LATEST
-        1+ @
-;
 
 : CLOSESTLINK ( addr vcfa -- lfa )
 
-        vcfa>latest dup         ( addr link link )
+        vocab>latest dup         ( addr link link )
         rot dup -rot            ( link addr link addr )
         < if
                 2drop

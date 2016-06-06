@@ -64,13 +64,14 @@
     ['] LIT , ,
 ;
 
-\ Address containing LFA of most recent definition
-: LATEST
-    CURRENT @ 1+ ;
+\ Convert vocabulary CFA to link addr it contains
+: VOCAB>LATEST
+        1+ @
+;
 
 \ Compile in recursive call to current word
 : RECURSE IMMEDIATE
-        LATEST @        \ LATEST points to the word being compiled at the moment
+        CURRENT @ VOCAB>LATEST
         LINK>           \ get the codeword
         ,               \ compile it
 ;

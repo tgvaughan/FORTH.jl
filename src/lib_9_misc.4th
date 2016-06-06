@@ -24,5 +24,9 @@
         then
 ;
 
+( Stractch pad. )
+: PAD           ( -- addr )
+        HERE 340 + ;
+
 : UNUSED  ( -- cells )
         MEMSIZE HERE - ;

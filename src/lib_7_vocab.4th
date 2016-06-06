@@ -10,7 +10,7 @@
 
         >link
 
-        DUP @ LATEST !      ( set LATEST to point to the previous word )
+        DUP @ CURRENT @ VOCAB>LATEST !      ( set LATEST to point to the previous word )
 ;
 
 \ Mark word as hidden
@@ -70,11 +70,10 @@ vocabulary ROOT
 ;
 
 : PREVIOUS
-        #context @ 1 > if
-                1 #context -!
-        else
-                CR ." Cannot empty search order stack!"
-        then
+        #context @
+        1 <= abort" Cannot empty search order stack!"
+
+        1 #context -!
 ;
 
 : ALSO
