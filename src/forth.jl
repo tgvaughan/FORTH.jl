@@ -13,7 +13,7 @@ mem = Array{Int64,1}(size_mem)
 primitives = Array{Function,1}()
 primNames = Array{ASCIIString,1}()
 
-# Built-in variables
+# Memory geography and built-in variables
 
 nextVarAddr = 1
 H = nextVarAddr; nextVarAddr += 1              # Next free memory address
@@ -83,6 +83,8 @@ getString(addr::Int64, len::Int64) = ASCIIString([Char(c) for c in mem[addr:(add
 function putString(str::ASCIIString, addr::Int64)
     mem[addr:(addr+length(str)-1)] = [Int64(c) for c in str]
 end
+
+stringAsInts(str::ASCIIString) = [Int(c) for c in collect(str)]
 
 # Primitive creation and calling functions
 
@@ -1010,8 +1012,11 @@ INTERPRET_CFA = defWord("INTERPRET",
     EXIT_CFA])
 
 PROMPT_CFA = defPrimWord("PROMPT", () -> begin
-    if (mem[STATE] == 0 && currentSource() == STDIN)
-        println(" ok")
+    if currentSource() == STDIN
+        if mem[STATE] == 0
+            print(" ok")
+        end
+        println()
     end
 
     return NEXT
