@@ -10,7 +10,7 @@
 
         >link
 
-        DUP @ CURRENT @ VOCAB>LATEST !      ( set LATEST to point to the previous word )
+        dup @ current @ 1+ !      ( set LATEST to point to the previous word )
 ;
 
 \ Mark word as hidden

@@ -61,7 +61,7 @@
 
         0= IF
                 ." Word '" COUNT TYPE ." ' not found in dictionary."
-                EXIT
+                CR ABORT
         THEN
 
         DUP DUP BODYLEN + SWAP >LINK
