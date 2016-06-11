@@ -92,7 +92,8 @@
 : COUNT ( addr1 -- addr2 n )
         DUP 1+ SWAP @ ;
 
-: ABORT" IMMEDIATE
+( Abort if flag is true. )
+: ABORT" IMMEDIATE  ( flag -- )
         [COMPILE] S"
 
         ['] rot ,
