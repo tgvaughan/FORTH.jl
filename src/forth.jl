@@ -585,6 +585,14 @@ end)
 sources = Array{Any,1}()
 currentSource() = sources[length(sources)]
 
+CLOSEFILES_CFA = defPrimWord("CLOSEFILES", () -> begin
+    while currentSource() != STDIN
+        close(pop!(sources))
+    end
+
+    return NEXT
+end)
+
 EOF_CFA = defPrimWord("\x04", () -> begin
     if currentSource() != STDIN
         close(pop!(sources))
@@ -1031,7 +1039,7 @@ QUIT_CFA = defWord("QUIT",
     BRANCH_CFA,-4])
 
 ABORT_CFA = defWord("ABORT",
-    [PSP0_CFA, PSPSTORE_CFA, QUIT_CFA])
+    [CLOSEFILES_CFA, PSP0_CFA, PSPSTORE_CFA, QUIT_CFA])
 
 BYE_CFA = defPrimWord("BYE", () -> begin
     println("\nBye!")
