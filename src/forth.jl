@@ -648,12 +648,7 @@ function getLineFromSTDIN()
 
         elseif key == '\b'
             if !isempty(line)
-                if line[length(line)] == '\t'
-                    print(string("\r\033[K",line[1:length(line)-1]))
-                else
-                    print("\b\033[K")
-                end
-
+                print("\b\033[K")
                 line = line[1:length(line)-1]
             end
 
@@ -668,6 +663,9 @@ function getLineFromSTDIN()
                     end
                 end
             end
+
+        elseif key == '\t'
+            # Currently do nothing
 
         else
             print(key)
