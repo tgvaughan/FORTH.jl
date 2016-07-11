@@ -87,7 +87,7 @@ To exit, enter ^D on a blank line or use the `BYE` word.
 One of my goals has been to have forth.jl contain as much of the
 [F83 required word set](http://forth.sourceforge.net/standard/fst83/fst83-12.htm) 
 as makes sense given the underlying VM. (Actually, my main goal goes a bit
-beyond this: I want to be able to, with a couple of exceptions, be compatible
+beyond this: I want to forth.jl to be, with a couple of exceptions, compatible
 with the description of forth contained in the second edition of Leo Brodie's
 book "Starting Forth".)  I'm fairly happy with my progress so far.  Of the
 131 required F83 words, only 20 remain unimplemented.  These words fall into
