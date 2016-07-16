@@ -1,5 +1,7 @@
 module forth
 
+import Base.REPLCompletions
+
 # VM mem size
 size_mem = 1000000 # 1 mega-int
 
@@ -11,7 +13,7 @@ size_TIB = 1000  # Terminal input buffer size
 # Memory arrays
 mem = Array{Int64,1}(size_mem)
 primitives = Array{Function,1}()
-primNames = Array{ASCIIString,1}()
+primNames = Array{AbstractString,1}()
 
 # Memory geography and built-in variables
 
@@ -78,13 +80,14 @@ end
 
 # Handy functions for adding/retrieving strings to/from memory.
 
-getString(addr::Int64, len::Int64) = ASCIIString([Char(c) for c in mem[addr:(addr+len-1)]])
+getString(addr::Int64, len::Int64) = AbstractString([Char(c) for c in mem[addr:(addr+len-1)]])
 
-function putString(str::ASCIIString, addr::Int64)
-    mem[addr:(addr+length(str)-1)] = [Int64(c) for c in str]
+function putString(str::AbstractString, addr::Int64, maxLen::Int64)
+    len = min(length(str), maxLen)
+    mem[addr:(addr+len-1)] = [Int64(c) for c in str]
 end
 
-stringAsInts(str::ASCIIString) = [Int(c) for c in collect(str)]
+stringAsInts(str::AbstractString) = [Int(c) for c in collect(str)]
 
 # Primitive creation and calling functions
 
@@ -116,7 +119,7 @@ function dictWrite(ints::Array{Int64,1})
     mem[H] += length(ints)
 end
 dictWrite(int::Int64) = dictWrite([int])
-dictWriteString(string::ASCIIString) = dictWrite([Int64(c) for c in string])
+dictWriteString(string::AbstractString) = dictWrite([Int64(c) for c in string])
 
 function createHeader(name::AbstractString, flags::Int64)
     mem[mem[H]] = mem[mem[CURRENT]+1]
@@ -633,13 +636,31 @@ KEY_CFA = defPrimWord("KEY", () -> begin
 end)
 
 function getLineFromSTDIN()
+
+    function getFrag(s)
+        chars = collect(s)
+        slashIdx = findlast(chars, '\\')
+
+        if slashIdx > 0
+            return join(chars[slashIdx:length(chars)])
+        else
+            return nothing
+        end
+    end
+
+    function backspaceStr(s, bsCount)
+        oldLen = length(s)
+        newLen = max(0, oldLen - bsCount)
+        return join(collect(s)[1:newLen])
+    end
+
     line = ""
     while true
         key = Char(getKey())
 
         if key == '\n'
             print(" ")
-            return ASCIIString(line)
+            return AbstractString(line)
 
         elseif key == '\x04'
             if isempty(line)
@@ -649,7 +670,7 @@ function getLineFromSTDIN()
         elseif key == '\b'
             if !isempty(line)
                 print("\b\033[K")
-                line = line[1:length(line)-1]
+                line = backspaceStr(line, 1)
             end
 
         elseif key == '\e'
@@ -666,6 +687,17 @@ function getLineFromSTDIN()
 
         elseif key == '\t'
             # Currently do nothing
+
+            frag = getFrag(line)
+            if frag != nothing
+                if haskey(REPLCompletions.latex_symbols, frag)
+                    print(repeat("\b", length(frag)))
+                    print("\033[K")
+                    comp = REPLCompletions.latex_symbols[frag]
+                    line = string(backspaceStr(line, length(frag)), comp)
+                    print(comp)
+                end
+            end
 
         else
             print(key)
@@ -690,7 +722,7 @@ EXPECT_CFA = defPrimWord("EXPECT", () -> begin
     end
 
     mem[SPAN] = min(length(line), maxLen)
-    putString(line[1:mem[SPAN]], addr)
+    putString(line, addr, maxLen)
 
     return NEXT
 end)
@@ -1166,7 +1198,7 @@ function dump(startAddr::Int64; count::Int64 = 100, cellsPerLine::Int64 = 10)
             i += 1
         end
 
-        println("\t", ASCIIString(chars))
+        println("\t", AbstractString(chars))
     end
 end
 

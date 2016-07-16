@@ -35,7 +35,7 @@
         WHILE
                 SWAP 1+         ( addr len -- len addr+1 )
                 DUP @           ( len addr -- len addr char | get the next character)
-                DUP 32 >= OVER 127 <= AND IF
+                DUP 32 >= IF
                         EMIT    ( len addr char -- len addr | and print it)
                 ELSE
                         BASE @ SWAP HEX
