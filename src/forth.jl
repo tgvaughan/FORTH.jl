@@ -48,13 +48,26 @@ function ensurePSDepth(depth::Int64)
     end
 end
 
+function ensurePSCapacity(toAdd::Int64)
+    if reg.PSP + toAdd >= PSP0 + size_PS
+        error("Parameter stack overflow.")
+    end
+end
+
 function ensureRSDepth(depth::Int64)
     if reg.RSP - RSP0 < depth
         error("Return stack underflow.")
     end
 end
 
+function ensureRSCapacity(toAdd::Int64)
+    if reg.RSP + toAdd >= RSP0 + size_RS
+        error("Return stack overflow.")
+    end
+end
+
 function pushRS(val::Int64)
+    ensureRSCapacity(1)
     mem[reg.RSP+=1] = val
 end
 
@@ -67,6 +80,8 @@ function popRS()
 end
 
 function pushPS(val::Int64)
+    ensurePSCapacity(1)
+
     mem[reg.PSP += 1] = val
 end
 
