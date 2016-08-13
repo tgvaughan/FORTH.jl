@@ -1030,6 +1030,43 @@ IMMEDIATE_CFA = defPrimWord("IMMEDIATE", () -> begin
     return NEXT
 end, flags=F_IMMED)
 
+CODE_CFA = defPrimWord("CODE", () -> begin
+    pushPS(32)
+    callPrim(mem[WORD_CFA])
+    callPrim(mem[HEADER_CFA])
+
+    exprString = "() -> begin\n"
+    while true
+        if mem[TOIN] >= mem[NUMTIB]
+            println()
+            exprString = string(exprString, "\n")
+
+            pushPS(TIB)
+            pushPS(160)
+            callPrim(mem[EXPECT_CFA])
+            mem[NUMTIB] = mem[SPAN]
+            mem[TOIN] = 0
+        end
+
+        pushPS(32)
+        callPrim(mem[WORD_CFA])
+        cAddr = popPS()
+        thisWord = getString(cAddr+1, mem[cAddr])
+
+        if uppercase(thisWord) == "END-CODE"
+            break
+        end
+
+        exprString = string(exprString, " ", thisWord)
+    end
+    exprString = string(exprString, "\nreturn NEXT\nend")
+
+    func = eval(parse(exprString))
+    dictWrite(defPrim(func))
+
+    return NEXT
+end)
+
 # Outer Interpreter
 
 EXECUTE_CFA = defPrimWord("EXECUTE", () -> begin
