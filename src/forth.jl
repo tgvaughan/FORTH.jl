@@ -1038,8 +1038,10 @@ CODE_CFA = defPrimWord("CODE", () -> begin
     exprString = "() -> begin\n"
     while true
         if mem[TOIN] >= mem[NUMTIB]
-            println()
             exprString = string(exprString, "\n")
+            if currentSource() == STDIN
+                println()
+            end
 
             pushPS(TIB)
             pushPS(160)
