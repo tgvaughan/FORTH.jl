@@ -600,25 +600,9 @@ end)
 
 # I/O
 
-sources = Array{Any,1}()
-currentSource() = sources[length(sources)]
-
-CLOSEFILES_CFA = defPrimWord("CLOSEFILES", () -> begin
-    while currentSource() != STDIN
-        close(pop!(sources))
-    end
-
-    return NEXT
-end)
-
-EOF_CFA = defPrimWord("\x04", () -> begin
-    if currentSource() != STDIN
-        close(pop!(sources))
-        return NEXT
-    else
-        return 0
-    end
-end)
+openFiles = Dict{Int64,IOStream}()
+nextFileID = 1
+SOURCE_ID, SOURCE_ID_CFA = defNewVar("SOURCE-ID", 0)
 
 EMIT_CFA = defPrimWord("EMIT", () -> begin
     print(Char(popPS()))
@@ -726,15 +710,7 @@ EXPECT_CFA = defPrimWord("EXPECT", () -> begin
     maxLen = popPS()
     addr = popPS()
 
-    if currentSource() == STDIN
-        line = getLineFromSTDIN()
-    else
-        if !eof(currentSource())
-            line = chomp(readline(currentSource()))
-        else
-            line = "\x04" # eof
-        end
-    end
+    line = getLineFromSTDIN()
 
     mem[SPAN] = min(length(line), maxLen)
     putString(line, addr, maxLen)
@@ -1109,12 +1085,10 @@ INTERPRET_CFA = defWord("INTERPRET",
     EXIT_CFA])
 
 PROMPT_CFA = defPrimWord("PROMPT", () -> begin
-    if currentSource() == STDIN
-        if mem[STATE] == 0
-            print(" ok")
-        end
-        println()
+    if mem[STATE] == 0
+        print(" ok")
     end
+    println()
 
     return NEXT
 end)
