@@ -604,6 +604,45 @@ openFiles = Dict{Int64,IOStream}()
 nextFileID = 1
 SOURCE_ID, SOURCE_ID_CFA = defNewVar("SOURCE-ID", 0)
 
+
+## File access modes
+FAM_RO = 0
+FAM_WO = 1
+FAM_RO_CFA = defConst("R/O", FAM_RO)
+FAM_WO_CFA = defConst("W/O", FAM_WO)
+
+OPEN_FILE_CFA = defPrimWord("OPEN-FILE", () -> begin
+    fnameLen = popPS()
+    fnameAddr = popPS()
+    fam = popPS()
+
+    fname = getString(fnameAddr, fnameLen)
+
+    if (!isfile(fname))
+        pushPS(0)
+        pushPS(-1) # error
+        return NEXT
+    end
+
+    if (fam == FAM_RO)
+        mode = "r"
+    else
+        mode = "w"
+    end
+
+    openFiles[nextFileID] = open(fname, mode)
+    pushPS(nextFileID)
+    pushPS(0)
+    
+    nextFileID += 1
+
+    return NEXT
+end);
+
+CREATE_FILE_CFA = defPrimWord("CREATE-FILE", () -> begin
+    return NEXT
+end)
+
 EMIT_CFA = defPrimWord("EMIT", () -> begin
     print(Char(popPS()))
     return NEXT
