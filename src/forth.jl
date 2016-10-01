@@ -9,6 +9,7 @@ size_mem = 1000000 # 1 mega-int
 size_RS = 1000   # Return stack size
 size_PS = 1000   # Parameter stack size
 size_TIB = 1000  # Terminal input buffer size
+size_FIB = 1000  # File input buffer size
 
 # Memory arrays
 mem = Array{Int64,1}(size_mem)
@@ -25,7 +26,8 @@ CURRENT = nextVarAddr; nextVarAddr += 1        # Current compilation dict
 RSP0 = nextVarAddr                  # bottom of RS
 PSP0 = RSP0 + size_RS               # bottom of PS
 TIB = PSP0 + size_PS                # address of terminal input buffer
-mem[H] = TIB + size_TIB             # location of bottom of dictionary
+FIB = TIB + size_TIB                # address of terminal input buffer
+mem[H] = FIB + size_FIB             # location of bottom of dictionary
 mem[FORTH_LATEST] = 0               # zero FORTH dict latest (no previous def)
 mem[CURRENT] = FORTH_LATEST-1       # Compile words to system dict initially
 
@@ -662,7 +664,11 @@ CLOSE_FILES_CFA = defPrimWord("CLOSE-FILES", () -> begin
 
     return NEXT
 end)
-                              
+
+READ_LINE_CFA = defPrimWord("READ-LINE", () -> begin
+    return NEXT
+end)
+
 
 EMIT_CFA = defPrimWord("EMIT", () -> begin
     print(Char(popPS()))
@@ -933,6 +939,10 @@ end)
 
 TIB_CFA = defConst("TIB", TIB)
 NUMTIB, NUMTIB_CFA = defNewVar("#TIB", 0)
+
+FIB_CFA = defConst("FIB", TIB)
+NUMFIB, NUMFIB_CFA = defNewVar("#FIB", 0)
+
 TOIN, TOIN_CFA = defNewVar(">IN", 0)
 
 QUERY_CFA = defWord("QUERY",
@@ -941,11 +951,25 @@ QUERY_CFA = defWord("QUERY",
     LIT_CFA, 0, TOIN_CFA, STORE_CFA,
     EXIT_CFA])
 
+QUERY_FILE_CFA = defWord("QUERY-FILE",
+    [FIB_CFA, LIT_CFA, 160, ROT_CFA, READ_LINE_CFA,
+    DROP_CFA, SWAP_CFA,
+    NUMFIB_CFA, STORE_CFA,
+    EXIT_CFA])
+
 WORD_CFA = defPrimWord("WORD", () -> begin
     delim = popPS()
 
+    if mem[SOURCE_ID] == 0
+        bufferAddr = TIB
+        sizeAddr = NUMTIB
+    else
+        bufferAddr = FIB
+        sizeAddr = NUMFIB
+    end
+
     # Chew up initial occurrences of delim
-    while (mem[TOIN]<mem[NUMTIB] && mem[TIB+mem[TOIN]] == delim)
+    while (mem[TOIN]<mem[sizeAddr] && mem[bufferAddr+mem[TOIN]] == delim)
         mem[TOIN] += 1
     end
 
@@ -954,8 +978,8 @@ WORD_CFA = defPrimWord("WORD", () -> begin
 
     # Start reading in word
     count = 0
-    while (mem[TOIN]<mem[NUMTIB])
-        mem[addr] = mem[TIB+mem[TOIN]]
+    while (mem[TOIN]<mem[sizeAddr])
+        mem[addr] = mem[bufferAddr+mem[TOIN]]
         mem[TOIN] += 1
 
         if (mem[addr] == delim)
