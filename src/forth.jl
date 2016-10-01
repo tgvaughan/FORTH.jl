@@ -1169,31 +1169,6 @@ BYE_CFA = defPrimWord("BYE", () -> begin
     return 0
 end)
 
-# File I/O
-
-INCLUDE_CFA = defPrimWord("INCLUDE", () -> begin
-    pushPS(32)
-    callPrim(mem[WORD_CFA])
-    wordAddr = popPS()+1
-    wordLen = mem[wordAddr-1]
-    word = getString(wordAddr, wordLen)
-
-    fname = word
-    if !isfile(fname)
-        fname = Pkg.dir("forth","src",word)
-        if !isfile(fname)
-            error("No file named $word found in current directory or package source directory.")
-        end
-    end
-    push!(sources, open(fname, "r"))
-
-    # Clear input buffer
-    mem[NUMTIB] = 0
-
-    return NEXT
-end)
-
-
 #### VM loop ####
 
 initialized = false
@@ -1205,14 +1180,14 @@ elseif isfile(Pkg.dir("forth","src", "lib.4th"))
 end
 
 function run(;initialize=true)
-    # Begin with STDIN as source
-    push!(sources, STDIN)
 
     global initialized, initFileName
     if !initialized && initialize
         if initFileName != nothing
             print("Including definitions from $initFileName...")
-            push!(sources, open(initFileName, "r"))
+
+            # TODO
+
             initialized = true
         else
             println("No library file found. Only primitive words available.")
@@ -1233,10 +1208,6 @@ function run(;initialize=true)
         catch ex
             showerror(STDOUT, ex)
             println()
-
-            while !isempty(sources) && currentSource() != STDIN
-                close(pop!(sources))
-            end
 
             # QUIT
             reg.IP = ABORT_CFA + 1
