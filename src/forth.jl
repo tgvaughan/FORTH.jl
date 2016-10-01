@@ -611,14 +611,14 @@ FAM_WO = 1
 FAM_RO_CFA = defConst("R/O", FAM_RO)
 FAM_WO_CFA = defConst("W/O", FAM_WO)
 
-OPEN_FILE_CFA = defPrimWord("OPEN-FILE", () -> begin
+function fileOpener(create::Bool)
     fnameLen = popPS()
     fnameAddr = popPS()
     fam = popPS()
 
     fname = getString(fnameAddr, fnameLen)
 
-    if (!isfile(fname))
+    if create && !isfile(fname)
         pushPS(0)
         pushPS(-1) # error
         return NEXT
@@ -635,13 +635,34 @@ OPEN_FILE_CFA = defPrimWord("OPEN-FILE", () -> begin
     pushPS(0)
     
     nextFileID += 1
+end
 
+OPEN_FILE_CFA = defPrimWord("OPEN-FILE", () -> begin
+    fileOpener(false)
     return NEXT
 end);
 
 CREATE_FILE_CFA = defPrimWord("CREATE-FILE", () -> begin
+    fileOpener(true)
+    return NEXT
+end);
+
+CLOSE_FILE_CFA = defPrimWord("CLOSE-FILE", () -> begin
+    fid = popPS()
+    close(openFiles[fid])
+    delete!(openFiles, fid)
     return NEXT
 end)
+
+CLOSE_FILES_CFA = defPrimWord("CLOSE-FILES", () -> begin
+    for fh in values(openFiles)
+        close(fh)
+    end
+    empty!(openFiles)
+
+    return NEXT
+end)
+                              
 
 EMIT_CFA = defPrimWord("EMIT", () -> begin
     print(Char(popPS()))
@@ -1141,7 +1162,7 @@ QUIT_CFA = defWord("QUIT",
     BRANCH_CFA,-4])
 
 ABORT_CFA = defWord("ABORT",
-    [CLOSEFILES_CFA, PSP0_CFA, PSPSTORE_CFA, QUIT_CFA])
+    [CLOSE_FILES_CFA, PSP0_CFA, PSPSTORE_CFA, QUIT_CFA])
 
 BYE_CFA = defPrimWord("BYE", () -> begin
     println("\nBye!")
