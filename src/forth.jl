@@ -604,7 +604,6 @@ end)
 
 openFiles = Dict{Int64,IOStream}()
 nextFileID = 1
-SOURCE_ID, SOURCE_ID_CFA = defNewVar("SOURCE-ID", 0)
 
 
 ## File access modes
@@ -945,6 +944,19 @@ NUMFIB, NUMFIB_CFA = defNewVar("#FIB", 0)
 
 TOIN, TOIN_CFA = defNewVar(">IN", 0)
 
+SOURCE_ID, SOURCE_ID_CFA = defNewVar("SOURCE-ID", 0)
+
+SOURCE_CFA = defPrimWord("SOURCE", () -> begin
+    if mem[SOURCE_ID] == 0
+        pushPS(TIB)
+        pushPS(NUMTIB)
+    else
+        pushPS(FIB)
+        pushPS(NUMFIB)
+    end
+    return NEXT
+end)
+
 QUERY_CFA = defWord("QUERY",
     [TIB_CFA, LIT_CFA, 160, EXPECT_CFA,
     SPAN_CFA, FETCH_CFA, NUMTIB_CFA, STORE_CFA,
@@ -960,13 +972,9 @@ QUERY_FILE_CFA = defWord("QUERY-FILE",
 WORD_CFA = defPrimWord("WORD", () -> begin
     delim = popPS()
 
-    if mem[SOURCE_ID] == 0
-        bufferAddr = TIB
-        sizeAddr = NUMTIB
-    else
-        bufferAddr = FIB
-        sizeAddr = NUMFIB
-    end
+    callPrim(mem[SOURCE_CFA])
+    sizeAddr = popPS()
+    bufferAddr = popPS()
 
     # Chew up initial occurrences of delim
     while (mem[TOIN]<mem[sizeAddr] && mem[bufferAddr+mem[TOIN]] == delim)
