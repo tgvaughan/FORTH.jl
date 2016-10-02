@@ -665,6 +665,22 @@ CLOSE_FILES_CFA = defPrimWord("CLOSE-FILES", () -> begin
 end)
 
 READ_LINE_CFA = defPrimWord("READ-LINE", () -> begin
+    fid = popPS()
+    maxSize = popPS()
+    addr = popPS()
+
+    fh = openFiles[fid]
+    line = readline(fh)
+
+    eofFlag = endswith(line, '\n') ? 0 : -1
+    line = chomp(line)
+
+    putString(line, addr, maxSize)
+
+    pushPS(length(line))
+    pushPS(eofFlag)
+    pushPS(0)
+
     return NEXT
 end)
 
