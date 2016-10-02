@@ -1164,7 +1164,7 @@ INTERPRET_CFA = defWord("INTERPRET",
     [LIT_CFA, 32, WORD_CFA, # Read next space-delimited word
 
     DUP_CFA, FETCH_CFA, ZE_CFA, ZBRANCH_CFA, 3,
-        DROP_CFA, EXIT_CFA, # Exit if TIB is exhausted
+        DROP_CFA, EXIT_CFA, # Exit if input buffer is exhausted
 
     STATE_CFA, FETCH_CFA, ZBRANCH_CFA, 24,
         # Compiling
@@ -1208,6 +1208,22 @@ QUIT_CFA = defWord("QUIT",
     QUERY_CFA,
     INTERPRET_CFA, PROMPT_CFA,
     BRANCH_CFA,-4])
+
+INTERPRET_CFA = defWord("INTERPRET",
+    [SOURCE_ID_CFA, FETCH_CFA, TOR_CFA, # Store current source on return stack
+
+    LIT_CFA, 32, WORD_CFA, # Read next word from current input source
+
+    FAM_RO_CFA, FILE_OPEN, DROP_CFA, # Open the file named by this word.
+
+    DUP_CFA, SOURCE_ID_CFA, STORE_CFA, # Mark this as the current source
+
+    DUP_CFA, QUERY_FILE_CFA, # Read line from file
+
+    INTERPRET_CFA,
+
+    BRANCH_CFA, -4]
+
 
 ABORT_CFA = defWord("ABORT",
     [CLOSE_FILES_CFA, PSP0_CFA, PSPSTORE_CFA, QUIT_CFA])
