@@ -1217,6 +1217,10 @@ BYE_CFA = defPrimWord("BYE", () -> begin
     return 0
 end)
 
+EOF_CFA = defPrimWord("\x04", () -> begin
+    return 0
+end)
+
 #### VM loop ####
 
 initialized = false
