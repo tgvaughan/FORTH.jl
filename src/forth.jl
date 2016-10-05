@@ -1214,7 +1214,7 @@ INTERPRET_CFA = defWord("INTERPRET",
 
     LIT_CFA, 32, WORD_CFA, # Read next word from current input source
 
-    FAM_RO_CFA, FILE_OPEN, DROP_CFA, # Open the file named by this word.
+    FAM_RO_CFA, OPEN_FILE_CFA, DROP_CFA, # Open the file named by this word.
 
     DUP_CFA, SOURCE_ID_CFA, STORE_CFA, # Mark this as the current source
 
@@ -1222,7 +1222,7 @@ INTERPRET_CFA = defWord("INTERPRET",
 
     INTERPRET_CFA,
 
-    BRANCH_CFA, -4]
+    BRANCH_CFA, -4])
 
 
 ABORT_CFA = defWord("ABORT",
@@ -1249,6 +1249,10 @@ end
 
 function run(;initialize=true)
 
+    # Start with IP pointing to first instruction of outer interpreter
+    pushRS(QUIT_CFA+1)
+
+    # Load library files
     global initialized, initFileName
     if !initialized && initialize
         if initFileName != nothing
@@ -1262,12 +1266,10 @@ function run(;initialize=true)
         end
     end
 
-    # Start with IP pointing to first instruction of outer interpreter
-    reg.IP = QUIT_CFA + 1
 
     # Primitive processing loop.
     # Everyting else is simply a consequence of this loop!
-    jmp = NEXT
+    jmp = mem[EXIT_CFA]
     while jmp != 0
         try
             #println("Entering prim $(getPrimName(jmp))")
