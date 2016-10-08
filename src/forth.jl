@@ -99,6 +99,10 @@ end
 
 getString(addr::Int64, len::Int64) = AbstractString([Char(c) for c in mem[addr:(addr+len-1)]])
 
+function putString(str::AbstractString, addr::Int64)
+    mem[addr:(addr+length(str)-1)] = [Int64(c) for c in str]
+end
+
 function putString(str::AbstractString, addr::Int64, maxLen::Int64)
     len = min(length(str), maxLen)
     mem[addr:(addr+len-1)] = [Int64(c) for c in str]
