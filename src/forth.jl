@@ -979,6 +979,8 @@ QUERY_CFA = defWord("QUERY",
     LIT_CFA, 0, TOIN_CFA, STORE_CFA,
     EXIT_CFA])
 
+# ( fid -- flag )
+# Flag is false when EOF is reached.
 QUERY_FILE_CFA = defWord("QUERY-FILE",
     [FIB_CFA, LIT_CFA, 160, ROT_CFA, READ_LINE_CFA,
     DROP_CFA, SWAP_CFA,
@@ -1209,20 +1211,16 @@ QUIT_CFA = defWord("QUIT",
     INTERPRET_CFA, PROMPT_CFA,
     BRANCH_CFA,-4])
 
-INTERPRET_CFA = defWord("INTERPRET",
+INCLUDED_CFA = defWord("INCLUDED",
     [SOURCE_ID_CFA, FETCH_CFA, TOR_CFA, # Store current source on return stack
-
-    LIT_CFA, 32, WORD_CFA, # Read next word from current input source
-
     FAM_RO_CFA, OPEN_FILE_CFA, DROP_CFA, # Open the file named by this word.
-
     DUP_CFA, SOURCE_ID_CFA, STORE_CFA, # Mark this as the current source
-
     DUP_CFA, QUERY_FILE_CFA, # Read line from file
-
     INTERPRET_CFA,
+    INVERT_CFA, ZBRANCH_CFA, -5,
+    DROP_CFA, EXIT_CFA])
 
-    BRANCH_CFA, -4])
+INCLUDE_CFA = defWord("INCLUDE", [LIT_CFA, 32, WORD_CFA, INCLUDED_CFA]);
 
 
 ABORT_CFA = defWord("ABORT",
