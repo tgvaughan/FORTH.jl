@@ -1030,7 +1030,7 @@ WORD_CFA = defPrimWord("WORD", () -> begin
     mem[countAddr] = count
     pushPS(countAddr)
 
-    println("Processing word: '$(getString(countAddr+1,mem[countAddr]))'")
+    #println("Processing word: '$(getString(countAddr+1,mem[countAddr]))'")
 
     return NEXT
 end)
@@ -1231,7 +1231,7 @@ INCLUDED_CFA = defWord("INCLUDED",
     DUP_CFA, SOURCE_ID_CFA, STORE_CFA,      # Mark this as the current source
     DUP_CFA, QUERY_FILE_CFA,                # Read line from file
     INTERPRET_CFA,                          # Interpret line
-    INVERT_CFA, ZBRANCH_CFA, -5,            # Loop if not EOF
+    ZBRANCH_CFA, -4,                        # Loop if not EOF
     CLOSE_FILE_CFA, DROP_CFA,               # Close file
     FROMR_CFA, SOURCE_ID_CFA, STORE_CFA,    # Restore input source
     EXIT_CFA])
@@ -1289,8 +1289,8 @@ function run(;initialize=true)
     jmp = mem[EXIT_CFA]
     while jmp != 0
         try
-            print("Entering prim $(getPrimName(jmp)), PS: ")
-            printPS()
+            #print("Entering prim $(getPrimName(jmp)), PS: ")
+            #printPS()
 
             jmp = callPrim(jmp)
 
