@@ -1,5 +1,5 @@
 : \ IMMEDIATE
-        #TIB @ >IN !
+        #IB @ >IN !
 ; \ We can now comment!
 
 \ Compile core definitions

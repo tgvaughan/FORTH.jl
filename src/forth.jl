@@ -968,6 +968,14 @@ NUMTIB, NUMTIB_CFA = defNewVar("#TIB", 0)
 FIB_CFA = defConst("FIB", FIB)
 NUMFIB, NUMFIB_CFA = defNewVar("#FIB", 0)
 
+IB_CFA = defPrimWord("IB", () -> begin
+    pushPS(mem[SOURCE_ID] == 0 ? TIB : FIB)
+end)
+
+NUMIB_CFA = defPrimWord("#IB", () -> begin
+    pushPS(mem[SOURCE_ID] == 0 ? NUMTIB : NUMFIB)
+end)
+
 TOIN, TOIN_CFA = defNewVar(">IN", 0)
 
 SOURCE_ID, SOURCE_ID_CFA = defNewVar("SOURCE-ID", 0)
