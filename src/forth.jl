@@ -617,9 +617,9 @@ FAM_RO_CFA = defConst("R/O", FAM_RO)
 FAM_WO_CFA = defConst("W/O", FAM_WO)
 
 function fileOpener(create::Bool)
+    fam = popPS()
     fnameLen = popPS()
     fnameAddr = popPS()
-    fam = popPS()
 
     fname = getString(fnameAddr, fnameLen)
 
@@ -635,6 +635,7 @@ function fileOpener(create::Bool)
         mode = "w"
     end
 
+    global nextFileID
     openFiles[nextFileID] = open(fname, mode)
     pushPS(nextFileID)
     pushPS(0)
@@ -656,6 +657,8 @@ CLOSE_FILE_CFA = defPrimWord("CLOSE-FILE", () -> begin
     fid = popPS()
     close(openFiles[fid])
     delete!(openFiles, fid)
+
+    pushPS(0) # Result code 0
     return NEXT
 end)
 
@@ -665,6 +668,7 @@ CLOSE_FILES_CFA = defPrimWord("CLOSE-FILES", () -> begin
     end
     empty!(openFiles)
 
+    pushPS(0) # Result code 0
     return NEXT
 end)
 
@@ -959,7 +963,7 @@ end)
 TIB_CFA = defConst("TIB", TIB)
 NUMTIB, NUMTIB_CFA = defNewVar("#TIB", 0)
 
-FIB_CFA = defConst("FIB", TIB)
+FIB_CFA = defConst("FIB", FIB)
 NUMFIB, NUMFIB_CFA = defNewVar("#FIB", 0)
 
 TOIN, TOIN_CFA = defNewVar(">IN", 0)
@@ -1209,6 +1213,7 @@ end)
 
 QUIT_CFA = defWord("QUIT",
     [LIT_CFA, 0, STATE_CFA, STORE_CFA,
+    LIT_CFA, 0, SOURCE_ID_CFA, STORE_CFA,
     LIT_CFA, 0, NUMTIB_CFA, STORE_CFA,
     RSP0_CFA, RSPSTORE_CFA,
     QUERY_CFA,
@@ -1222,13 +1227,15 @@ INCLUDED_CFA = defWord("INCLUDED",
     DUP_CFA, QUERY_FILE_CFA, # Read line from file
     INTERPRET_CFA,
     INVERT_CFA, ZBRANCH_CFA, -5,
-    DROP_CFA, EXIT_CFA])
+    CLOSE_FILE_CFA, DROP_CFA,
+    FROMR_CFA, SOURCE_ID_CFA, STORE_CFA,
+    EXIT_CFA])
 
-INCLUDE_CFA = defWord("INCLUDE", [LIT_CFA, 32, WORD_CFA, INCLUDED_CFA]);
+INCLUDE_CFA = defWord("INCLUDE", [LIT_CFA, 32, WORD_CFA, INCLUDED_CFA, EXIT_CFA]);
 
 
 ABORT_CFA = defWord("ABORT",
-    [CLOSE_FILES_CFA, PSP0_CFA, PSPSTORE_CFA, QUIT_CFA])
+    [CLOSE_FILES_CFA, DROP_CFA, PSP0_CFA, PSPSTORE_CFA, QUIT_CFA])
 
 BYE_CFA = defPrimWord("BYE", () -> begin
     println("\nBye!")
@@ -1260,7 +1267,10 @@ function run(;initialize=true)
         if initFileName != nothing
             print("Including definitions from $initFileName...")
 
-            # TODO
+            putString(initFileName, mem[H])
+            pushPS(mem[H])
+            pushPS(length(initFileName))
+            pushRS(INCLUDED_CFA+1)
 
             initialized = true
         else
@@ -1274,7 +1284,9 @@ function run(;initialize=true)
     jmp = mem[EXIT_CFA]
     while jmp != 0
         try
-            #println("Entering prim $(getPrimName(jmp))")
+            #print("Entering prim $(getPrimName(jmp)), PS: ")
+            #printPS()
+
             jmp = callPrim(jmp)
 
         catch ex
