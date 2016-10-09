@@ -683,6 +683,8 @@ READ_LINE_CFA = defPrimWord("READ-LINE", () -> begin
     eofFlag = endswith(line, '\n') ? 0 : -1
     line = chomp(line)
 
+    println("Reading: $line");
+
     putString(line, addr, maxSize)
 
     pushPS(length(line))
@@ -1028,6 +1030,8 @@ WORD_CFA = defPrimWord("WORD", () -> begin
     mem[countAddr] = count
     pushPS(countAddr)
 
+    println("Processing word: '$(getString(countAddr+1,mem[countAddr]))'")
+
     return NEXT
 end)
 
@@ -1212,23 +1216,24 @@ PROMPT_CFA = defPrimWord("PROMPT", () -> begin
 end)
 
 QUIT_CFA = defWord("QUIT",
-    [LIT_CFA, 0, STATE_CFA, STORE_CFA,
-    LIT_CFA, 0, SOURCE_ID_CFA, STORE_CFA,
-    LIT_CFA, 0, NUMTIB_CFA, STORE_CFA,
-    RSP0_CFA, RSPSTORE_CFA,
-    QUERY_CFA,
-    INTERPRET_CFA, PROMPT_CFA,
-    BRANCH_CFA,-4])
+    [LIT_CFA, 0, STATE_CFA, STORE_CFA,      # Set mode to interpret
+    LIT_CFA, 0, SOURCE_ID_CFA, STORE_CFA,   # Set terminal as input stream
+    LIT_CFA, 0, NUMTIB_CFA, STORE_CFA,      # Clear the input buffer
+    RSP0_CFA, RSPSTORE_CFA,                 # Clear the return stack
+    QUERY_CFA,                              # Read line of input
+    INTERPRET_CFA, PROMPT_CFA,              # Interpret line
+    BRANCH_CFA,-4])                         # Loop
 
 INCLUDED_CFA = defWord("INCLUDED",
-    [SOURCE_ID_CFA, FETCH_CFA, TOR_CFA, # Store current source on return stack
-    FAM_RO_CFA, OPEN_FILE_CFA, DROP_CFA, # Open the file named by this word.
-    DUP_CFA, SOURCE_ID_CFA, STORE_CFA, # Mark this as the current source
-    DUP_CFA, QUERY_FILE_CFA, # Read line from file
-    INTERPRET_CFA,
-    INVERT_CFA, ZBRANCH_CFA, -5,
-    CLOSE_FILE_CFA, DROP_CFA,
-    FROMR_CFA, SOURCE_ID_CFA, STORE_CFA,
+    [LIT_CFA, 0, STATE_CFA, STORE_CFA,      # Set mode to interpret
+    SOURCE_ID_CFA, FETCH_CFA, TOR_CFA,      # Store current source on return stack
+    FAM_RO_CFA, OPEN_FILE_CFA, DROP_CFA,    # Open the file
+    DUP_CFA, SOURCE_ID_CFA, STORE_CFA,      # Mark this as the current source
+    DUP_CFA, QUERY_FILE_CFA,                # Read line from file
+    INTERPRET_CFA,                          # Interpret line
+    INVERT_CFA, ZBRANCH_CFA, -5,            # Loop if not EOF
+    CLOSE_FILE_CFA, DROP_CFA,               # Close file
+    FROMR_CFA, SOURCE_ID_CFA, STORE_CFA,    # Restore input source
     EXIT_CFA])
 
 INCLUDE_CFA = defWord("INCLUDE", [LIT_CFA, 32, WORD_CFA, INCLUDED_CFA, EXIT_CFA]);
@@ -1284,8 +1289,8 @@ function run(;initialize=true)
     jmp = mem[EXIT_CFA]
     while jmp != 0
         try
-            #print("Entering prim $(getPrimName(jmp)), PS: ")
-            #printPS()
+            print("Entering prim $(getPrimName(jmp)), PS: ")
+            printPS()
 
             jmp = callPrim(jmp)
 
