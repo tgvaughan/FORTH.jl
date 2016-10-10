@@ -1237,14 +1237,14 @@ QUIT_CFA = defWord("QUIT",
 
 INCLUDED_CFA = defWord("INCLUDED",
     [LIT_CFA, 0, STATE_CFA, STORE_CFA,      # Set mode to interpret
-    SOURCE_ID_CFA, FETCH_CFA, TOR_CFA,      # Store current source on return stack
     FAM_RO_CFA, OPEN_FILE_CFA, DROP_CFA,    # Open the file
+    SOURCE_ID_CFA, FETCH_CFA, SWAP_CFA,     # Store current source on stack
     DUP_CFA, SOURCE_ID_CFA, STORE_CFA,      # Mark this as the current source
     DUP_CFA, QUERY_FILE_CFA,                # Read line from file
     INTERPRET_CFA,                          # Interpret line
     ZBRANCH_CFA, -4,                        # Loop if not EOF
     CLOSE_FILE_CFA, DROP_CFA,               # Close file
-    FROMR_CFA, SOURCE_ID_CFA, STORE_CFA,    # Restore input source
+    SOURCE_ID_CFA, STORE_CFA,               # Restore input source
     EXIT_CFA])
 
 INCLUDE_CFA = defWord("INCLUDE", [LIT_CFA, 32, WORD_CFA,
