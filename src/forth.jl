@@ -1245,6 +1245,7 @@ INCLUDED_CFA = defWord("INCLUDED",
     SOURCE_ID_CFA, FETCH_CFA, QUERY_FILE_CFA,   # Read line from file
     INTERPRET_CFA,                              # Interpret line
     EOF_FLAG_CFA, FETCH_CFA, ZBRANCH_CFA, -7,   # Loop if not EOF
+    SOURCE_ID_CFA, FETCH_CFA,
     CLOSE_FILE_CFA, DROP_CFA,                   # Close file
     SOURCE_ID_CFA, STORE_CFA,                   # Restore input source
     EXIT_CFA])
@@ -1305,8 +1306,8 @@ function run(;initialize=true)
     jmp = mem[EXIT_CFA]
     while jmp != 0
         try
-            #print("Entering prim $(getPrimName(jmp)), PS: ")
-            #printPS()
+            print("Entering prim $(getPrimName(jmp)), PS: ")
+            printPS()
 
             jmp = callPrim(jmp)
 
