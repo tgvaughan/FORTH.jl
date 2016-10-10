@@ -999,11 +999,13 @@ QUERY_CFA = defWord("QUERY",
     LIT_CFA, 0, TOIN_CFA, STORE_CFA,
     EXIT_CFA])
 
-# ( fid -- flag )
-# Flag is false when EOF is reached.
+EOF_FLAG, EOF_FLAG_CFA  = defNewVar("EOF-FLAG", 0)
+
+# ( fid -- )
+# EOF-FLAG is set to true if EOF is reached
 QUERY_FILE_CFA = defWord("QUERY-FILE",
     [FIB_CFA, LIT_CFA, 160, ROT_CFA, READ_LINE_CFA,
-    DROP_CFA, SWAP_CFA,
+    DROP_CFA, EOF_FLAG_CFA, STORE_CFA,
     NUMFIB_CFA, STORE_CFA,
     LIT_CFA, 0, TOIN_CFA, STORE_CFA,
     EXIT_CFA])
@@ -1236,15 +1238,15 @@ QUIT_CFA = defWord("QUIT",
     BRANCH_CFA,-4])                         # Loop
 
 INCLUDED_CFA = defWord("INCLUDED",
-    [LIT_CFA, 0, STATE_CFA, STORE_CFA,      # Set mode to interpret
-    FAM_RO_CFA, OPEN_FILE_CFA, DROP_CFA,    # Open the file
-    SOURCE_ID_CFA, FETCH_CFA, SWAP_CFA,     # Store current source on stack
-    DUP_CFA, SOURCE_ID_CFA, STORE_CFA,      # Mark this as the current source
-    DUP_CFA, QUERY_FILE_CFA,                # Read line from file
-    INTERPRET_CFA,                          # Interpret line
-    ZBRANCH_CFA, -4,                        # Loop if not EOF
-    CLOSE_FILE_CFA, DROP_CFA,               # Close file
-    SOURCE_ID_CFA, STORE_CFA,               # Restore input source
+    [LIT_CFA, 0, STATE_CFA, STORE_CFA,          # Set mode to interpret
+    FAM_RO_CFA, OPEN_FILE_CFA, DROP_CFA,        # Open the file
+    SOURCE_ID_CFA, FETCH_CFA, SWAP_CFA,         # Store current source on stack
+    SOURCE_ID_CFA, STORE_CFA,                   # Mark this as the current source
+    SOURCE_ID_CFA, FETCH_CFA, QUERY_FILE_CFA,   # Read line from file
+    INTERPRET_CFA,                              # Interpret line
+    EOF_FLAG_CFA, FETCH_CFA, ZBRANCH_CFA, -7,   # Loop if not EOF
+    CLOSE_FILE_CFA, DROP_CFA,                   # Close file
+    SOURCE_ID_CFA, STORE_CFA,                   # Restore input source
     EXIT_CFA])
 
 INCLUDE_CFA = defWord("INCLUDE", [LIT_CFA, 32, WORD_CFA,
