@@ -970,10 +970,12 @@ NUMFIB, NUMFIB_CFA = defNewVar("#FIB", 0)
 
 IB_CFA = defPrimWord("IB", () -> begin
     pushPS(mem[SOURCE_ID] == 0 ? TIB : FIB)
+    return NEXT
 end)
 
 NUMIB_CFA = defPrimWord("#IB", () -> begin
     pushPS(mem[SOURCE_ID] == 0 ? NUMTIB : NUMFIB)
+    return NEXT
 end)
 
 TOIN, TOIN_CFA = defNewVar(">IN", 0)
@@ -1003,6 +1005,7 @@ QUERY_FILE_CFA = defWord("QUERY-FILE",
     [FIB_CFA, LIT_CFA, 160, ROT_CFA, READ_LINE_CFA,
     DROP_CFA, SWAP_CFA,
     NUMFIB_CFA, STORE_CFA,
+    LIT_CFA, 0, TOIN_CFA, STORE_CFA,
     EXIT_CFA])
 
 WORD_CFA = defPrimWord("WORD", () -> begin
@@ -1038,7 +1041,7 @@ WORD_CFA = defPrimWord("WORD", () -> begin
     mem[countAddr] = count
     pushPS(countAddr)
 
-    #println("Processing word: '$(getString(countAddr+1,mem[countAddr]))'")
+    println("Processing word: '$(getString(countAddr+1,mem[countAddr]))' (state $(mem[STATE]))")
 
     return NEXT
 end)
