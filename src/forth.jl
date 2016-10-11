@@ -999,13 +999,11 @@ QUERY_CFA = defWord("QUERY",
     LIT_CFA, 0, TOIN_CFA, STORE_CFA,
     EXIT_CFA])
 
-EOF_FLAG, EOF_FLAG_CFA  = defNewVar("EOF-FLAG", 0)
-
-# ( fid -- )
-# EOF-FLAG is set to true if EOF is reached
+# ( fid -- flag )
+# flag set to true if EOF is reached
 QUERY_FILE_CFA = defWord("QUERY-FILE",
     [FIB_CFA, LIT_CFA, 160, ROT_CFA, READ_LINE_CFA,
-    DROP_CFA, EOF_FLAG_CFA, STORE_CFA,
+    DROP_CFA, SWAP_CFA,
     NUMFIB_CFA, STORE_CFA,
     LIT_CFA, 0, TOIN_CFA, STORE_CFA,
     EXIT_CFA])
@@ -1243,8 +1241,10 @@ INCLUDED_CFA = defWord("INCLUDED",
     SOURCE_ID_CFA, FETCH_CFA, SWAP_CFA,         # Store current source on stack
     SOURCE_ID_CFA, STORE_CFA,                   # Mark this as the current source
     SOURCE_ID_CFA, FETCH_CFA, QUERY_FILE_CFA,   # Read line from file
+    NUMFIB_CFA, FETCH_CFA, ZE_CFA, AND_CFA,     # Test for EOF and empty line
+    INVERT_CFA, ZBRANCH_CFA, 4,                 # Break out if EOF
     INTERPRET_CFA,                              # Interpret line
-    EOF_FLAG_CFA, FETCH_CFA, ZBRANCH_CFA, -7,   # Loop if not EOF
+    BRANCH_CFA, -12,                            # Loop
     SOURCE_ID_CFA, FETCH_CFA,
     CLOSE_FILE_CFA, DROP_CFA,                   # Close file
     SOURCE_ID_CFA, STORE_CFA,                   # Restore input source
@@ -1306,8 +1306,8 @@ function run(;initialize=true)
     jmp = mem[EXIT_CFA]
     while jmp != 0
         try
-            print("Entering prim $(getPrimName(jmp)), PS: ")
-            printPS()
+            #print("Entering prim $(getPrimName(jmp)), PS: ")
+            #printPS()
 
             jmp = callPrim(jmp)
 
