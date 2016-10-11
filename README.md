@@ -41,12 +41,12 @@ the library file.  Once this is complete you can start entering forth commands:
     star * ok
 
 There's an example Mandelbrot Set drawing program included in the examples
-directory.  To run it, use the `INCLUDE` word to open the file and compile its
+directory.  To run it, use the `INCLUDE-LIB` word to open the file and compile its
 definitions.  Although the exact location of the examples directory in your
-filesystem is platform dependent, `INCLUDE` includes the forth.jl src/ directory
+filesystem is platform dependent, `INCLUDE-LIB` includes the forth.jl src/ directory
 in its search path so the following should always work:
 
-    include ../examples/mandelbrot.4th
+    include-lib ../examples/mandelbrot.4th
     Enter 'mandel' to draw the Mandelbrot Set. ok
     mandel
                                                                                 *                   

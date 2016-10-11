@@ -1253,6 +1253,27 @@ INCLUDE_CFA = defWord("INCLUDE", [LIT_CFA, 32, WORD_CFA,
     SWAP_CFA, FETCH_CFA,
     INCLUDED_CFA, EXIT_CFA]);
 
+oldCWD = ""
+SETLIBCWD_CFA = defPrimWord("SETLIBCWD", () -> begin
+    global oldCWD = pwd()
+    if !isfile("lib.4th") # Exception for debugging.
+        cd(Pkg.dir("forth","src"))
+    end
+    return NEXT
+end)
+
+RESTORECWD_CFA = defPrimWord("RESTORECWD", () -> begin
+    cd(oldCWD)
+    return NEXT
+end)
+
+INCLUDED_LIB_CFA = defWord("INCLUDED-LIB",
+    [SETLIBCWD_CFA, INCLUDED_CFA, RESTORECWD_CFA, EXIT_CFA])
+
+INCLUDE_LIB_CFA = defWord("INCLUDE-LIB", [LIT_CFA, 32, WORD_CFA,
+    DUP_CFA, INCR_CFA,
+    SWAP_CFA, FETCH_CFA,
+    INCLUDED_LIB_CFA, EXIT_CFA]);
 
 ABORT_CFA = defWord("ABORT",
     [CLOSE_FILES_CFA, DROP_CFA, PSP0_CFA, PSPSTORE_CFA, QUIT_CFA])
@@ -1269,12 +1290,7 @@ end)
 #### VM loop ####
 
 initialized = false
-initFileName = nothing
-if isfile("lib.4th")
-    initFileName = "lib.4th"
-elseif isfile(Pkg.dir("forth","src", "lib.4th"))
-    initFileName = Pkg.dir("forth","src","lib.4th")
-end
+initFileName = "lib.4th"
 
 function run(;initialize=true)
 
@@ -1290,7 +1306,7 @@ function run(;initialize=true)
             putString(initFileName, mem[H])
             pushPS(mem[H])
             pushPS(length(initFileName))
-            pushRS(INCLUDED_CFA+1)
+            pushRS(INCLUDED_LIB_CFA+1)
 
             initialized = true
         else
