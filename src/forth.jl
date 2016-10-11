@@ -1243,7 +1243,9 @@ INCLUDED_CFA = defWord("INCLUDED",
     BRANCH_CFA, -14,                            # Loop
     SOURCE_ID_VAR_CFA, FETCH_CFA,
     CLOSE_FILE_CFA, DROP_CFA,                   # Close file
-    SOURCE_ID_VAR_CFA, STORE_CFA,                   # Restore input source
+    SOURCE_ID_VAR_CFA, STORE_CFA,               # Restore input source
+    LIT_CFA, 0, NUMIB_CFA, STORE_CFA,           # Zero #IB
+    LIT_CFA, 0, TOIN_CFA, STORE_CFA,            # Zero >IN
     EXIT_CFA])
 
 INCLUDE_CFA = defWord("INCLUDE", [LIT_CFA, 32, WORD_CFA,

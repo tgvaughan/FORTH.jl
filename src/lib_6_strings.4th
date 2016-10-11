@@ -45,11 +45,11 @@
         0 ,             ( dummy length - we don't know what it is yet )
 
         BEGIN
-                >IN @ #IB @ >= IF      \ End of TIB?
+                >IN @ #IB @ >= IF      \ End of IB?
                         QUERY-INPUT    \ Get next line
                 THEN
 
-                IB >IN @ + @ 1 >IN +!  \ Get char from TIB
+                IB >IN @ + @ 1 >IN +!  \ Get char from IB
 
                 DUP [CHAR] " <>
         WHILE
@@ -73,11 +73,11 @@
   right-paren to the terminal. )
 : .( 
         BEGIN
-                >IN @ #IB @ >= IF      \ End of TIB?
+                >IN @ #IB @ >= IF      \ End of IB?
                         QUERY-INPUT    \ Get next line
                 THEN
 
-                IB >IN @ + @ 1 >IN +!  \ Get char from TIB
+                IB >IN @ + @ 1 >IN +!  \ Get char from IB
 
                 DUP [CHAR] ) = IF
                         DROP    ( drop the double quote character )
