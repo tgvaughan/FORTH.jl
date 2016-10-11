@@ -683,7 +683,7 @@ READ_LINE_CFA = defPrimWord("READ-LINE", () -> begin
     eofFlag = endswith(line, '\n') ? 0 : -1
     line = chomp(line)
 
-    println("Reading: $line");
+    #println("Reading: $line");
 
     putString(line, addr, maxSize)
 
@@ -999,14 +999,21 @@ QUERY_CFA = defWord("QUERY",
     LIT_CFA, 0, TOIN_CFA, STORE_CFA,
     EXIT_CFA])
 
-# ( fid -- flag )
-# flag set to true if EOF is reached
+EOF_FLAG, EOF_FLAG_CFA = defNewVar("EOF-FLAG", 0)
+
+# ( fid -- )
+# EOF-FLAG set to true if EOF is reached
 QUERY_FILE_CFA = defWord("QUERY-FILE",
     [FIB_CFA, LIT_CFA, 160, ROT_CFA, READ_LINE_CFA,
-    DROP_CFA, SWAP_CFA,
+    DROP_CFA, EOF_FLAG_CFA, STORE_CFA,
     NUMFIB_CFA, STORE_CFA,
     LIT_CFA, 0, TOIN_CFA, STORE_CFA,
     EXIT_CFA])
+
+QUERY_INPUT_CFA = defWord("QUERY-INPUT",
+    [SOURCE_ID_CFA, FETCH_CFA, QDUP_CFA, ZBRANCH_CFA, 3,
+    QUERY_FILE_CFA, EXIT_CFA,
+    QUERY_CFA, EXIT_CFA])
 
 WORD_CFA = defPrimWord("WORD", () -> begin
     delim = popPS()
@@ -1041,7 +1048,7 @@ WORD_CFA = defPrimWord("WORD", () -> begin
     mem[countAddr] = count
     pushPS(countAddr)
 
-    println("Processing word: '$(getString(countAddr+1,mem[countAddr]))' (state $(mem[STATE]))")
+    #println("Processing word: '$(getString(countAddr+1,mem[countAddr]))' (state $(mem[STATE]))")
 
     return NEXT
 end)
@@ -1241,10 +1248,11 @@ INCLUDED_CFA = defWord("INCLUDED",
     SOURCE_ID_CFA, FETCH_CFA, SWAP_CFA,         # Store current source on stack
     SOURCE_ID_CFA, STORE_CFA,                   # Mark this as the current source
     SOURCE_ID_CFA, FETCH_CFA, QUERY_FILE_CFA,   # Read line from file
+    EOF_FLAG_CFA, FETCH_CFA,
     NUMFIB_CFA, FETCH_CFA, ZE_CFA, AND_CFA,     # Test for EOF and empty line
     INVERT_CFA, ZBRANCH_CFA, 4,                 # Break out if EOF
     INTERPRET_CFA,                              # Interpret line
-    BRANCH_CFA, -12,                            # Loop
+    BRANCH_CFA, -14,                            # Loop
     SOURCE_ID_CFA, FETCH_CFA,
     CLOSE_FILE_CFA, DROP_CFA,                   # Close file
     SOURCE_ID_CFA, STORE_CFA,                   # Restore input source
