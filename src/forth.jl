@@ -969,29 +969,18 @@ FIB_CFA = defConst("FIB", FIB)
 NUMFIB, NUMFIB_CFA = defNewVar("#FIB", 0)
 
 IB_CFA = defPrimWord("IB", () -> begin
-    pushPS(mem[SOURCE_ID] == 0 ? TIB : FIB)
+    pushPS(mem[SOURCE_ID_VAR] == 0 ? TIB : FIB)
     return NEXT
 end)
 
 NUMIB_CFA = defPrimWord("#IB", () -> begin
-    pushPS(mem[SOURCE_ID] == 0 ? NUMTIB : NUMFIB)
+    pushPS(mem[SOURCE_ID_VAR] == 0 ? NUMTIB : NUMFIB)
     return NEXT
 end)
 
 TOIN, TOIN_CFA = defNewVar(">IN", 0)
 
-SOURCE_ID, SOURCE_ID_CFA = defNewVar("SOURCE-ID", 0)
-
-SOURCE_CFA = defPrimWord("SOURCE", () -> begin
-    if mem[SOURCE_ID] == 0
-        pushPS(TIB)
-        pushPS(NUMTIB)
-    else
-        pushPS(FIB)
-        pushPS(NUMFIB)
-    end
-    return NEXT
-end)
+SOURCE_ID_VAR, SOURCE_ID_VAR_CFA = defNewVar("SOURCE-ID-VAR", 0)
 
 QUERY_CFA = defWord("QUERY",
     [TIB_CFA, LIT_CFA, 160, EXPECT_CFA,
@@ -1010,17 +999,16 @@ QUERY_FILE_CFA = defWord("QUERY-FILE",
     LIT_CFA, 0, TOIN_CFA, STORE_CFA,
     EXIT_CFA])
 
-QUERY_INPUT_CFA = defWord("QUERY-INPUT",
-    [SOURCE_ID_CFA, FETCH_CFA, QDUP_CFA, ZBRANCH_CFA, 3,
-    QUERY_FILE_CFA, EXIT_CFA,
-    QUERY_CFA, EXIT_CFA])
-
 WORD_CFA = defPrimWord("WORD", () -> begin
     delim = popPS()
 
-    callPrim(mem[SOURCE_CFA])
-    sizeAddr = popPS()
-    bufferAddr = popPS()
+    if mem[SOURCE_ID_VAR] == 0
+        bufferAddr = TIB
+        sizeAddr = NUMTIB
+    else
+        bufferAddr = FIB
+        sizeAddr = NUMFIB
+    end
 
     # Chew up initial occurrences of delim
     while (mem[TOIN]<mem[sizeAddr] && mem[bufferAddr+mem[TOIN]] == delim)
@@ -1235,7 +1223,7 @@ end)
 
 QUIT_CFA = defWord("QUIT",
     [LIT_CFA, 0, STATE_CFA, STORE_CFA,      # Set mode to interpret
-    LIT_CFA, 0, SOURCE_ID_CFA, STORE_CFA,   # Set terminal as input stream
+    LIT_CFA, 0, SOURCE_ID_VAR_CFA, STORE_CFA,   # Set terminal as input stream
     LIT_CFA, 0, NUMTIB_CFA, STORE_CFA,      # Clear the input buffer
     RSP0_CFA, RSPSTORE_CFA,                 # Clear the return stack
     QUERY_CFA,                              # Read line of input
@@ -1245,17 +1233,17 @@ QUIT_CFA = defWord("QUIT",
 INCLUDED_CFA = defWord("INCLUDED",
     [LIT_CFA, 0, STATE_CFA, STORE_CFA,          # Set mode to interpret
     FAM_RO_CFA, OPEN_FILE_CFA, DROP_CFA,        # Open the file
-    SOURCE_ID_CFA, FETCH_CFA, SWAP_CFA,         # Store current source on stack
-    SOURCE_ID_CFA, STORE_CFA,                   # Mark this as the current source
-    SOURCE_ID_CFA, FETCH_CFA, QUERY_FILE_CFA,   # Read line from file
+    SOURCE_ID_VAR_CFA, FETCH_CFA, SWAP_CFA,         # Store current source on stack
+    SOURCE_ID_VAR_CFA, STORE_CFA,                   # Mark this as the current source
+    SOURCE_ID_VAR_CFA, FETCH_CFA, QUERY_FILE_CFA,   # Read line from file
     EOF_FLAG_CFA, FETCH_CFA,
     NUMFIB_CFA, FETCH_CFA, ZE_CFA, AND_CFA,     # Test for EOF and empty line
     INVERT_CFA, ZBRANCH_CFA, 4,                 # Break out if EOF
     INTERPRET_CFA,                              # Interpret line
     BRANCH_CFA, -14,                            # Loop
-    SOURCE_ID_CFA, FETCH_CFA,
+    SOURCE_ID_VAR_CFA, FETCH_CFA,
     CLOSE_FILE_CFA, DROP_CFA,                   # Close file
-    SOURCE_ID_CFA, STORE_CFA,                   # Restore input source
+    SOURCE_ID_VAR_CFA, STORE_CFA,                   # Restore input source
     EXIT_CFA])
 
 INCLUDE_CFA = defWord("INCLUDE", [LIT_CFA, 32, WORD_CFA,
