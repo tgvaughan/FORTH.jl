@@ -1134,42 +1134,18 @@ IMMEDIATE_CFA = defPrimWord("IMMEDIATE", () -> begin
     return NEXT
 end, flags=F_IMMED)
 
-CODE_CFA = defPrimWord("CODE", () -> begin
-    pushPS(32)
-    callPrim(mem[WORD_CFA])
-    callPrim(mem[HEADER_CFA])
+# ( addr n -- primAddr )
+CREATE_PRIM_CFA = defPrimWord("CREATE-PRIM", () -> begin
+    len = popPS()
+    addr = popPS()
+    
+    exprString = string("() -> begin\n",
+                        getString(addr, len), "\n",
+                        "return NEXT\n",
+                        "end")
+    func = eval(parse(expString))
 
-    exprString = "() -> begin\n"
-    while true
-        if mem[TOIN] >= mem[NUMTIB]
-            exprString = string(exprString, "\n")
-            if currentSource() == STDIN
-                println()
-            end
-
-            pushPS(TIB)
-            pushPS(160)
-            callPrim(mem[EXPECT_CFA])
-            mem[NUMTIB] = mem[SPAN]
-            mem[TOIN] = 0
-        end
-
-        pushPS(32)
-        callPrim(mem[WORD_CFA])
-        cAddr = popPS()
-        thisWord = getString(cAddr+1, mem[cAddr])
-
-        if uppercase(thisWord) == "END-CODE"
-            break
-        end
-
-        exprString = string(exprString, " ", thisWord)
-    end
-    exprString = string(exprString, "\nreturn NEXT\nend")
-
-    func = eval(parse(exprString))
-    dictWrite(defPrim(func))
-
+    pushPS(defPrim(func))
     return NEXT
 end)
 

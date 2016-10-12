@@ -92,6 +92,39 @@
 : COUNT ( addr1 -- addr2 n )
         DUP 1+ SWAP @ ;
 
+( Compares two strings, returns 0 if identical. )
+: COMPARE ( addr1 n1 addr2 n2 -- res )
+    rot 2dup <> if
+        2drop 2drop 1 exit
+    then
+    
+    drop
+
+    0 do
+        2dup i + @ swap i + @ <> if
+            unloop 2drop 1 exit
+        then
+    loop
+
+    2drop 0
+;
+
+( Converts a string to lower case. )
+: TOLOWER ( addr n -- )
+    0 do
+        dup i + @ dup dup ( addr char char char )
+        [char] A >=
+        swap [char] Z <= and if
+            [char] A - [char] a +
+            over i + !
+        else
+            drop
+        then
+    loop
+
+    drop
+;
+
 ( Abort if flag is true. )
 : ABORT" IMMEDIATE  ( flag -- )
         [COMPILE] S"

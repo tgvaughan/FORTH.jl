@@ -99,6 +99,11 @@
         [COMPILE] ?LEAVE
 ;
 
+\ Clean up return stack
+: UNLOOP IMMEDIATE
+        ['] RDROP , ['] RDROP , ['] RDROP ,
+;
+
 : +LOOP IMMEDIATE
 
         ['] DUP , \ Store copy of increment
