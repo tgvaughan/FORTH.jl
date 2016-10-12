@@ -42,9 +42,7 @@ the library file.  Once this is complete you can start entering forth commands:
 
 There's an example Mandelbrot Set drawing program included in the examples
 directory.  To run it, use the `INCLUDE-LIB` word to open the file and compile its
-definitions.  Although the exact location of the examples directory in your
-filesystem is platform dependent, `INCLUDE-LIB` includes the forth.jl src/ directory
-in its search path so the following should always work:
+definitions:
 
     include-lib ../examples/mandelbrot.4th
     Enter 'mandel' to draw the Mandelbrot Set. ok
@@ -80,7 +78,9 @@ in its search path so the following should always work:
                                                                            **                       
     ok
 
-To exit, enter ^D on a blank line or use the `BYE` word.
+(`INCLUDE-LIB` is exactly like INCLUDE, but includes files relative to thte
+platform-dependent forth.jl src/ directory.) To exit, enter ^D on a blank line
+or use the `BYE` word.
 
 ## FORTH-83 Compliance
 
