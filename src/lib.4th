@@ -17,4 +17,9 @@ include lib_9_decompiler.4th
 include lib_10_misc.4th
 include lib_11_extensions.4th
 
-.(  done.) cr
+: WELCOME
+    SKIP-WELCOME @ INVERT IF
+        ." Welcome to forth.jl!" CR CR
+    THEN
+;
+welcome

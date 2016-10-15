@@ -1229,6 +1229,20 @@ INCLUDE_CFA = defWord("INCLUDE", [LIT_CFA, 32, WORD_CFA,
     SWAP_CFA, FETCH_CFA,
     INCLUDED_CFA, EXIT_CFA]);
 
+ABORT_CFA = defWord("ABORT",
+    [CLOSE_FILES_CFA, DROP_CFA, PSP0_CFA, PSPSTORE_CFA, QUIT_CFA])
+
+BYE_CFA = defPrimWord("BYE", () -> begin
+    println("\nBye!")
+    return 0
+end)
+
+EOF_CFA = defPrimWord("\x04", () -> begin
+    return 0
+end)
+
+### Library loading ###
+
 oldCWD = ""
 SETLIBCWD_CFA = defPrimWord("SETLIBCWD", () -> begin
     global oldCWD = pwd()
@@ -1251,37 +1265,38 @@ INCLUDE_LIB_CFA = defWord("INCLUDE-LIB", [LIT_CFA, 32, WORD_CFA,
     SWAP_CFA, FETCH_CFA,
     INCLUDED_LIB_CFA, EXIT_CFA]);
 
-ABORT_CFA = defWord("ABORT",
-    [CLOSE_FILES_CFA, DROP_CFA, PSP0_CFA, PSPSTORE_CFA, QUIT_CFA])
-
-BYE_CFA = defPrimWord("BYE", () -> begin
-    println("\nBye!")
-    return 0
-end)
-
-EOF_CFA = defPrimWord("\x04", () -> begin
-    return 0
-end)
+SKIP_WELCOME, SKIP_WELCOME_CFA = defNewVar("SKIP-WELCOME", 0)
 
 #### VM loop ####
 
 initialized = false
-initFileName = "lib.4th"
+libFileName = "lib.4th"
 
-function run(;initialize=true)
+function run(fileName=nothing; initialize=true)
 
     # Start with IP pointing to first instruction of outer interpreter
     pushRS(QUIT_CFA+1)
 
-    # Load library files
-    global initialized, initFileName
-    if !initialized && initialize
-        if initFileName != nothing
-            print("Including definitions from $initFileName...")
+    # Include optional file
+    if fileName != nothing
+        putString(fileName, mem[H])
+        pushPS(mem[H])
+        mem[H] += length(fileName)
+        pushPS(length(fileName))
+        pushRS(INCLUDED_CFA+1)
 
-            putString(initFileName, mem[H])
+        mem[SKIP_WELCOME] = -1
+    end
+
+    # Load library files
+    global initialized, libFileName
+    if !initialized && initialize
+        if libFileName != nothing
+            #print("Including definitions from $libFileName...")
+
+            putString(libFileName, mem[H])
             pushPS(mem[H])
-            pushPS(length(initFileName))
+            pushPS(length(libFileName))
             pushRS(INCLUDED_LIB_CFA+1)
 
             initialized = true
