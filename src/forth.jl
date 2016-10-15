@@ -1233,7 +1233,9 @@ ABORT_CFA = defWord("ABORT",
     [CLOSE_FILES_CFA, DROP_CFA, PSP0_CFA, PSPSTORE_CFA, QUIT_CFA])
 
 BYE_CFA = defPrimWord("BYE", () -> begin
-    println("\nBye!")
+    if mem[SOURCE_ID_VAR] == 0
+        println("\nBye!")
+    end
     return 0
 end)
 
