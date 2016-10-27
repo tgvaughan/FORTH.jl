@@ -37,12 +37,19 @@
         DROP
 ;
 
-( Compile-mode word which compiles everything until the next
-  double quote as a litstring. )
-: S" IMMEDIATE          ( -- addr len )
-        ['] LITSTRING ,   ( compile LITSTRING )
-        HERE          ( save the address of the length word on the stack )
-        0 ,             ( dummy length - we don't know what it is yet )
+: COMPILING? STATE @ 0<> ;
+
+( In compile mode, word compiles everything until the next
+  double quote as a litstring.  Otherwise, dynamically allocates
+  memory and stores string there, returning address and length. )
+: S" IMMEDIATE ( -- addr len )
+        COMPILING? IF
+                ['] LITSTRING ,   ( compile LITSTRING )
+                HERE          ( save the address of the length word on the stack )
+                0 ,             ( dummy length - we don't know what it is yet )
+        ELSE
+                HERE    ( save the starting address on the stack )
+        THEN
 
         BEGIN
                 >IN @ #IB @ >= IF      \ End of IB?
@@ -53,13 +60,18 @@
 
                 DUP [CHAR] " <>
         WHILE
-                C,              ( copy character )
+                ,              ( copy character )
         REPEAT
         DROP            ( drop the double quote character at the end )
-        DUP             ( get the saved address of the length word )
-        HERE SWAP -   ( calculate the length )
-        1-              ( subtract 1 (because we measured from the start of the length word) )
-        SWAP !          ( and back-fill the length location )
+
+        COMPILING? IF
+                DUP             ( get the saved address of the length word )
+                HERE SWAP -   ( calculate the length )
+                1-              ( subtract 1 (because we measured from the start of the length word) )
+                SWAP !          ( and back-fill the length location )
+        ELSE
+                DUP HERE SWAP -
+        THEN
 ;
 
 ( Compile-mode word which compiles everything until the
