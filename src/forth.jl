@@ -97,7 +97,7 @@ end
 
 # Handy functions for adding/retrieving strings to/from memory.
 
-getString(addr::Int64, len::Int64) = AbstractString([Char(c) for c in mem[addr:(addr+len-1)]])
+getString(addr::Int64, len::Int64) = String([Char(c) for c in mem[addr:(addr+len-1)]])
 
 function putString(str::AbstractString, addr::Int64)
     mem[addr:(addr+length(str)-1)] = [Int64(c) for c in str]
@@ -708,7 +708,7 @@ end
 
 function getKey()
     raw_mode!(true)
-    byte = readbytes(STDIN, 1)[1]
+    byte = read(STDIN, 1)[1]
     raw_mode!(false)
 
     if byte == 0x0d
@@ -750,7 +750,7 @@ function getLineFromSTDIN()
 
         if key == '\n'
             print(" ")
-            return AbstractString(line)
+            return String(line)
 
         elseif key == '\x04'
             if isempty(line)
@@ -1370,7 +1370,7 @@ function dump(startAddr::Int64; count::Int64 = 100, cellsPerLine::Int64 = 10)
             i += 1
         end
 
-        println("\t", AbstractString(chars))
+        println("\t", String(chars))
     end
 end
 

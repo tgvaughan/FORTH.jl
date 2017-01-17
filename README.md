@@ -26,6 +26,9 @@ install it, you will therefore need to use the following command:
 
     julia> Pkg.clone("https://github.com/tgvaughan/forth.jl")
 
+Currently, forth.jl **requires** Julia 0.5. (Incompatabilities between 0.4 and 0.5
+mean that I cannot support both versions.)
+
 ## Usage
 
 To start the interpreter/compiler running, simply enter the following at
