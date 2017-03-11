@@ -683,13 +683,30 @@ READ_LINE_CFA = defPrimWord("READ-LINE", () -> begin
     eofFlag = endswith(line, '\n') ? 0 : -1
     line = chomp(line)
 
-    #println("Reading: $line");
-
     putString(line, addr, maxSize)
 
     pushPS(length(line))
     pushPS(eofFlag)
     pushPS(0)
+
+    return NEXT
+end)
+
+READ_FILE_CFA = defPrimWord("READ-FILE", () -> begin
+    fid = popPS()
+    size = popPS()
+    addr = popPS()
+
+    fh = openFiles[fid]
+
+    string = join(map(x -> Char(x), read(fh, size)), "")
+
+    eofFlag = length(string) == size ? 0 : -1 ;
+
+    putString(string, addr, length(string))
+
+    pushPS(length(string))
+    pushPS(eofFlag)
 
     return NEXT
 end)
