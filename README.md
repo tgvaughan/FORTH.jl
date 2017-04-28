@@ -6,7 +6,7 @@ that which it has already fulfilled: forcing me to think quite carefully about
 how forth works. 
 
 This package owes a massive debt to the existence of the literate programming
-project [JonesForth] (https://rwmj.wordpress.com/2010/08/07/jonesforth-git-repository/),
+project [JonesForth](https://rwmj.wordpress.com/2010/08/07/jonesforth-git-repository/),
 which was an amazing read. To a large degree my package is simply a port of
 that project from x86 assembly + forth to julia + forth, although the mapping
 is in a few places non-trivial due to the fact that julia is a high level
