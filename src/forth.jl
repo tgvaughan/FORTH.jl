@@ -501,7 +501,7 @@ end)
 XOR_CFA = defPrimWord("XOR", () -> begin
     b = popPS()
     a = popPS()
-    pushPS(a $ b)
+    pushPS(xor(a, b))
     return NEXT
 end)
 
@@ -678,7 +678,7 @@ READ_LINE_CFA = defPrimWord("READ-LINE", () -> begin
     addr = popPS()
 
     fh = openFiles[fid]
-    line = readline(fh)
+    line = readline(fh, chomp=false)
 
     eofFlag = endswith(line, '\n') ? 0 : -1
     line = chomp(line)
@@ -1127,7 +1127,7 @@ end, flags=F_IMMED)
 
 HIDDEN_CFA = defPrimWord("HIDDEN", () -> begin
     lenAndFlagsAddr = mem[mem[CURRENT]+1] + 1
-    mem[lenAndFlagsAddr] = mem[lenAndFlagsAddr] $ F_HIDDEN
+    mem[lenAndFlagsAddr] = xor(mem[lenAndFlagsAddr], F_HIDDEN)
     return NEXT
 end)
 
@@ -1147,7 +1147,7 @@ SEMICOLON_CFA = defWord(";",
 
 IMMEDIATE_CFA = defPrimWord("IMMEDIATE", () -> begin
     lenAndFlagsAddr = mem[mem[CURRENT]+1] + 1
-    mem[lenAndFlagsAddr] = mem[lenAndFlagsAddr] $ F_IMMED
+    mem[lenAndFlagsAddr] = xor(mem[lenAndFlagsAddr],  F_IMMED)
     return NEXT
 end, flags=F_IMMED)
 
