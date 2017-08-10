@@ -47,7 +47,6 @@
         2DROP           ( len addr -- )
 ;
 
-
 \ Create new vocabulary
 : VOCABULARY
         create 0 ,
