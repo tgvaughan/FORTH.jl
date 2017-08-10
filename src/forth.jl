@@ -1,6 +1,6 @@
 module forth
 
-import Base.REPLCompletions
+import Base.REPLCompletions, Base.invokelatest
 
 # VM mem size
 size_mem = 1000000 # 1 mega-int
@@ -123,7 +123,7 @@ function callPrim(addr::Int64)
     if addr >=0 || -addr>length(primitives)
         error("Attempted to execute non-existent primitive at address $addr.")
     else
-        primitives[-addr]()
+		invokelatest(primitives[-addr])
     end
 end
 getPrimName(addr::Int64) = primNames[-addr]
