@@ -677,6 +677,10 @@ READ_LINE_CFA = defPrimWord("READ-LINE", () -> begin
     maxSize = popPS()
     addr = popPS()
 
+    if !(fid in keys(openFiles))
+        error(string("Invalid FID ", fid, "."))
+    end
+
     fh = openFiles[fid]
     line = readline(fh, chomp=false)
 
@@ -1336,6 +1340,7 @@ function run(fileName=nothing; initialize=true)
             jmp = callPrim(jmp)
 
         catch ex
+            println(string("Error in primitive '", getPrimName(jmp), "' at address ", jmp))
             showerror(STDOUT, ex)
             println()
 
