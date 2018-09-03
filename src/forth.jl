@@ -1,6 +1,6 @@
 module forth
 
-import REPL.REPLCompletions, Base.invokelatest
+import REPL.REPLCompletions, Base.invokelatest, Pkg
 
 # VM mem size
 size_mem = 1000000 # 1 mega-int
@@ -12,9 +12,9 @@ size_TIB = 1000  # Terminal input buffer size
 size_FIB = 1000  # File input buffer size
 
 # Memory arrays
-mem = Array{Int64,1}(size_mem)
-primitives = Array{Function,1}()
-primNames = Array{AbstractString,1}()
+mem = Array{Int64,1}(undef,size_mem)
+primitives = Array{Function,1}(undef, 0)
+primNames = Array{AbstractString,1}(undef, 0)
 
 # Memory geography and built-in variables
 
@@ -682,7 +682,7 @@ READ_LINE_CFA = defPrimWord("READ-LINE", () -> begin
     end
 
     fh = openFiles[fid]
-    line = readline(fh, chomp=false)
+    line = readline(fh, keep=true)
 
     eofFlag = endswith(line, '\n') ? 0 : -1
     line = chomp(line)
@@ -722,14 +722,14 @@ EMIT_CFA = defPrimWord("EMIT", () -> begin
 end)
 
 function raw_mode!(mode::Bool)
-    if ccall(:jl_tty_set_mode, Int32, (Ptr{Nothing}, Int32), STDIN.handle, mode) != 0
+    if ccall(:jl_tty_set_mode, Int32, (Ptr{Nothing}, Int32), stdin.handle, mode) != 0
         throw("FATAL: Terminal unable to enter raw mode.")
     end
 end
 
 function getKey()
     raw_mode!(true)
-    byte = read(STDIN, 1)[1]
+    byte = read(stdin, 1)[1]
     raw_mode!(false)
 
     if byte == 0x0d
@@ -837,7 +837,7 @@ NUMBER_CFA = defPrimWord("NUMBER", () -> begin
 
     s = getString(wordAddr, wordLen)
 
-    pushPS(parse(Int64, s, mem[BASE]))
+    pushPS(parse(Int64, s, base=mem[BASE]))
 
     return NEXT
 end)
@@ -1364,7 +1364,7 @@ TRACE_CFA = defPrimWord("TRACE", () -> begin
 end)
 
 function dump(startAddr::Int64; count::Int64 = 100, cellsPerLine::Int64 = 10)
-    chars = Array{Char,1}(cellsPerLine)
+    chars = Array{Char,1}(undef, cellsPerLine)
 
     lineStartAddr = cellsPerLine*div((startAddr-1),cellsPerLine) + 1
     endAddr = startAddr + count - 1
