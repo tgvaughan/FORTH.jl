@@ -1,6 +1,6 @@
 module forth
 
-import Base.REPLCompletions, Base.invokelatest
+import REPL.REPLCompletions, Base.invokelatest
 
 # VM mem size
 size_mem = 1000000 # 1 mega-int
@@ -34,7 +34,7 @@ mem[CURRENT] = FORTH_LATEST-1       # Compile words to system dict initially
 DICT = mem[H] # Save bottom of dictionary as constant
 
 # VM registers
-type Reg
+mutable struct Reg
     RSP::Int64  # Return stack pointer
     PSP::Int64  # Parameter/data stack pointer
     IP::Int64   # Instruction pointer
@@ -114,7 +114,7 @@ stringAsInts(str::AbstractString) = [Int(c) for c in collect(str)]
 
 function defPrim(f::Function; name="nameless")
     push!(primitives, f)
-    push!(primNames, replace(name, "\004", "EOF"))
+    push!(primNames, replace(name, "\004" => "EOF"))
 
     return -length(primitives)
 end
@@ -722,7 +722,7 @@ EMIT_CFA = defPrimWord("EMIT", () -> begin
 end)
 
 function raw_mode!(mode::Bool)
-    if ccall(:jl_tty_set_mode, Int32, (Ptr{Void}, Int32), STDIN.handle, mode) != 0
+    if ccall(:jl_tty_set_mode, Int32, (Ptr{Nothing}, Int32), STDIN.handle, mode) != 0
         throw("FATAL: Terminal unable to enter raw mode.")
     end
 end
@@ -1341,7 +1341,7 @@ function run(fileName=nothing; initialize=true)
 
         catch ex
             println(string("Error in primitive '", getPrimName(jmp), "' at address ", jmp))
-            showerror(STDOUT, ex)
+            showerror(stdout, ex)
             println()
 
             # QUIT
