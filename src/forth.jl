@@ -750,9 +750,9 @@ function getLineFromSTDIN()
 
     function getFrag(s)
         chars = collect(s)
-        slashIdx = findlast(chars, '\\')
+        slashIdx = findlast(isequal('\\'), chars)
 
-        if slashIdx > 0
+        if slashIdx != nothing
             return join(chars[slashIdx:length(chars)])
         else
             return nothing
