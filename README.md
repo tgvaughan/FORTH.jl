@@ -27,8 +27,7 @@ Julia package manager (accessed using the `]` key):
 
     (v1.0) pkg> add https://github.com/tgvaughan/forth.jl
 
-Be aware that **forth.jl requires Julia 1.0**. (Incompatabilities exist between
-0.6 and previous versions of julia, particularly the handling of [world age](https://github.com/JuliaLang/julia/pull/17057).)
+Be aware that **forth.jl requires Julia 1.0**.
 
 ## Usage
 
