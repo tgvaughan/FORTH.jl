@@ -22,11 +22,12 @@ high-level grounding, but that will have to wait for another time.
 ## Installation
 
 forth.jl is not (and probably will never be) a registered julia package.  To
-install it, you will therefore need to use the following command:
+install it, you will therefore need to use the following command from the
+Julia package manager (accessed using the `]` key):
 
-    julia> Pkg.clone("https://github.com/tgvaughan/forth.jl")
+    (v1.0) pkg> add https://github.com/tgvaughan/forth.jl
 
-Currently, forth.jl **requires** Julia 0.6. (Incompatabilities exist between
+Be aware that **forth.jl requires Julia 1.0**. (Incompatabilities exist between
 0.6 and previous versions of julia, particularly the handling of [world age](https://github.com/JuliaLang/julia/pull/17057).)
 
 ## Usage
