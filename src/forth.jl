@@ -1164,7 +1164,7 @@ CREATE_PRIM_CFA = defPrimWord("CREATE-PRIM", () -> begin
                         getString(addr, len), "\n",
                         "return NEXT\n",
                         "end")
-    func = eval(parse(exprString))
+    func = eval(Meta.parse(exprString))
 
     pushPS(defPrim(func))
     return NEXT
