@@ -1270,7 +1270,7 @@ oldCWD = ""
 SETLIBCWD_CFA = defPrimWord("SETLIBCWD", () -> begin
     global oldCWD = pwd()
     if !isfile("lib.4th") # Exception for debugging.
-        cd(Pkg.dir("forth","src"))
+        cd(@__DIR__) # Macro expands to CWD at compile time
     end
     return NEXT
 end)
