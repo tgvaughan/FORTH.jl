@@ -1434,4 +1434,9 @@ DUMP = defPrimWord("DUMP", () -> begin
     return NEXT
 end)
 
+TIME = defPrimWord("TIME", () -> begin
+    pushPS(Int64(time_ns()))
+    return NEXT
+end)
+
 end
