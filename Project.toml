@@ -1,0 +1,4 @@
+name = "forth"
+uuid = "b854209b-e968-4163-975a-3ef17cc01beb"
+authors = ["Tim Vaughan <timv@ughan.xyz>"]
+version = "1.0.0"
